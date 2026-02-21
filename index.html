@@ -4,19 +4,42 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Тестовая книга</title>
-  <link rel="stylesheet" href="style.css" />
+
+  <style>
+    body {
+      margin: 0;
+      background: #1a1a1a;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    #book {
+      width: 1100px;
+      height: 750px;
+    }
+
+    .page {
+      width: 550px;
+      height: 750px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+    }
+
+    .page img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+  </style>
 </head>
 <body>
 
-<div class="topbar">
-  <button id="prev">◀</button>
-  <div class="title">Тестовая книга (5 страниц)</div>
-  <button id="next">▶</button>
-</div>
-
 <div id="book"></div>
 
-<!-- Подключаем библиотеку перелистывания через CDN -->
 <script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.js"></script>
 
 <script>
@@ -30,33 +53,25 @@ const pages = [
 
 const book = document.getElementById("book");
 
-// Создаём HTML-страницы
 pages.forEach(src => {
   const page = document.createElement("div");
   page.className = "page";
 
   const img = document.createElement("img");
   img.src = src;
-  img.alt = "";
 
   page.appendChild(img);
   book.appendChild(page);
 });
 
-// Запускаем flipbook
 const pageFlip = new St.PageFlip(book, {
   width: 550,
   height: 750,
-  size: "stretch",
-  showCover: false,
-  maxShadowOpacity: 0.3,
-  mobileScrollSupport: false
+  size: "fixed",
+  showCover: false
 });
 
 pageFlip.loadFromHTML(document.querySelectorAll(".page"));
-
-document.getElementById("prev").addEventListener("click", () => pageFlip.flipPrev());
-document.getElementById("next").addEventListener("click", () => pageFlip.flipNext());
 </script>
 
 </body>
