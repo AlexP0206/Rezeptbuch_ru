@@ -293,25 +293,68 @@
     }
 
     function render() {
-      const two = shouldShowTwoPages();
+  const two = shouldShowTwoPages();
 
-      if (two) {
-        if (index % 2 !== 0) index -= 1;
-        index = clamp(index, 0, pages.length - 1);
+  // 1) выравниваем индекс
+  if (two && index % 2 !== 0) index -= 1;
+  index = clamp(index, 0, pages.length - 1);
 
-        imgL.src = pages[index] ?? "";
-        imgR.src = pages[index + 1] ?? "";
+  // 2) определяем какие страницы показывать
+  const leftSrc  = pages[index] ?? "";
+  const rightSrc = (two ? (pages[index + 1] ?? "") : "");
 
-        hud.textContent = `${index + 1}–${Math.min(index + 2, pages.length)} / ${pages.length}`;
-      } else {
-        index = clamp(index, 0, pages.length - 1);
-        imgL.src = pages[index] ?? "";
-        hud.textContent = `${index + 1} / ${pages.length}`;
-      }
+  // 3) HUD
+  if (two) {
+    hud.textContent = `${index + 1}–${Math.min(index + 2, pages.length)} / ${pages.length}`;
+  } else {
+    hud.textContent = `${index + 1} / ${pages.length}`;
+  }
 
+  // 4) в режиме одной страницы — прячем правую и очищаем src
+  if (!two) {
+    imgR.src = "";
+  }
+
+  // 5) ЖЁСТКИЙ сброс transform ДО смены src (чтобы не наследовалось)
+  imgL.style.transform = "translate(0px, 0px) scale(1)";
+  imgR.style.transform = "translate(0px, 0px) scale(1)";
+  zoomState.L = { scale: 1, x: 0, y: 0 };
+  zoomState.R = { scale: 1, x: 0, y: 0 };
+
+  // 6) После загрузки картинки ещё раз сбрасываем (Safari/iOS фикс)
+  //    Важно: сбрасываем только один раз на рендер, чтобы не копились обработчики
+  let done = false;
+  const finalize = () => {
+    if (done) return;
+    done = true;
+
+    resetZoom("L");
+    resetZoom("R");
+
+    // дополнительный страховочный сброс в следующий кадр
+    requestAnimationFrame(() => {
       resetZoom("L");
       resetZoom("R");
-    }
+    });
+  };
+
+  imgL.onload = finalize;
+  imgL.onerror = finalize;
+
+  // 7) Меняем src (если такой же — всё равно принудительно finalize)
+  const oldLeft = imgL.getAttribute("data-src") || "";
+  imgL.setAttribute("data-src", leftSrc);
+  imgL.src = leftSrc;
+
+  if (two) {
+    imgR.src = rightSrc;
+  }
+
+  // Если картинка та же самая и onload не сработает — вызываем finalize вручную
+  if (leftSrc === oldLeft) {
+    finalize();
+  }
+}
 
     // ====== СВАЙП ДЛЯ ЛИСТАНИЯ (только если zoom=1) ======
     let swipeStartX = 0, swipeStartY = 0;
@@ -446,21 +489,11 @@
       tocOverlay.style.display = "none";
     }
 
-  function gotoPage(pageNumber1Based) {
-  suppressTapUntil = Date.now() + 450;
-
+   function gotoPage(pageNumber1Based) {
+  suppressTapUntil = Date.now() + 600;
   index = clamp(pageNumber1Based - 1, 0, pages.length - 1);
-
   closeToc();
   render();
-
-  // ✅ ВАЖНО: принудительно центрируем контейнер
-  document.getElementById("app").scrollTo(0, 0);
-
-  // И ещё раз через кадр (Safari иногда сдвигает позже)
-  requestAnimationFrame(() => {
-    document.getElementById("app").scrollTo(0, 0);
-  });
 }
 
     function renderToc(filter) {
