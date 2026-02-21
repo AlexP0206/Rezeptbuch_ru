@@ -12,71 +12,195 @@
       height: 100%;
       background: #000;
       overflow: hidden;
-      touch-action: none; /* мы сами управляем жестами в области книги */
+      touch-action: none;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      color: #fff;
     }
 
-    /* Контейнер книги на весь экран с safe-area */
+    /* Фон (PNG). Положи файл в assets/background.png */
     #app {
       width: 100vw;
-      height: 100vh;   /* fallback */
-      height: 100dvh;  /* iOS 16+ */
+      height: 100vh;
+      height: 100dvh;
       padding: env(safe-area-inset-top) env(safe-area-inset-right)
                env(safe-area-inset-bottom) env(safe-area-inset-left);
       box-sizing: border-box;
-      background: #000;
+
+      background-image: url("assets/background.png");
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+
       display: flex;
       align-items: center;
       justify-content: center;
+      position: relative;
     }
 
-    /* Область просмотра */
+    /* затемнение, чтобы текст UI был читаемым (можешь убрать, если не нужно) */
+    #app::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      background: rgba(0,0,0,0.20);
+      pointer-events:none;
+    }
+
     #viewer {
       width: 100%;
       height: 100%;
       display: grid;
       gap: 0;
-      background: #000;
+      position: relative;
+      z-index: 1;
     }
 
-    /* 1 страница по умолчанию; для iPad landscape мы переключим на 2 колонки через JS */
     #viewer.one  { grid-template-columns: 1fr; }
     #viewer.two  { grid-template-columns: 1fr 1fr; }
 
     .pane {
       position: relative;
-      overflow: hidden;         /* чтобы зум не выходил за рамки панели */
-      background: #000;
-      touch-action: none;       /* важное для pinch */
+      overflow: hidden;
+      background: rgba(0,0,0,0.35);
+      touch-action: none;
+      backdrop-filter: blur(0px);
     }
 
     .pane img {
       width: 100%;
       height: 100%;
-      object-fit: contain;      /* целиком без обрезки */
+      object-fit: contain;
       transform-origin: center center;
       will-change: transform;
       user-select: none;
       -webkit-user-drag: none;
-      pointer-events: none;     /* чтобы жесты ловила панель */
+      pointer-events: none;
     }
 
-    /* Небольшой индикатор страницы */
+    /* HUD */
     #hud {
       position: fixed;
       left: 50%;
       bottom: 10px;
       transform: translateX(-50%);
       background: rgba(0,0,0,0.55);
-      color: #fff;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
-      font-size: 14px;
       padding: 6px 10px;
       border-radius: 999px;
+      font-size: 14px;
+      z-index: 5;
       pointer-events: none;
+    }
+
+    /* Кнопка меню */
+    #menuBtn {
+      position: fixed;
+      top: calc(10px + env(safe-area-inset-top));
+      left: calc(10px + env(safe-area-inset-left));
+      z-index: 10;
+      border: 1px solid rgba(255,255,255,0.25);
+      background: rgba(0,0,0,0.55);
+      color: #fff;
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 16px;
+      line-height: 1;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    /* Оглавление (drawer) */
+    #tocOverlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      display: none;
+      z-index: 20;
+    }
+    #tocDrawer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: min(360px, 86vw);
+      height: 100vh;
+      height: 100dvh;
+      background: rgba(10,10,10,0.92);
+      border-right: 1px solid rgba(255,255,255,0.12);
+      transform: translateX(-110%);
+      transition: transform 160ms ease;
+      z-index: 21;
+      display: flex;
+      flex-direction: column;
+      padding: calc(12px + env(safe-area-inset-top)) 12px 12px calc(12px + env(safe-area-inset-left));
+      box-sizing: border-box;
+    }
+    #tocDrawer.open { transform: translateX(0); }
+
+    .tocHeader {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .tocHeader h2 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 700;
+    }
+    .tocHeader button {
+      border: 1px solid rgba(255,255,255,0.25);
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+      border-radius: 12px;
+      padding: 8px 10px;
+      font-size: 14px;
+    }
+
+    #tocList {
+      overflow: auto;
+      padding-right: 6px;
+    }
+
+    .tocItem {
+      display: flex;
+      gap: 10px;
+      align-items: baseline;
+      padding: 10px 8px;
+      border-radius: 12px;
+      cursor: pointer;
+      border: 1px solid transparent;
+    }
+    .tocItem:hover {
+      background: rgba(255,255,255,0.06);
+      border-color: rgba(255,255,255,0.10);
+    }
+    .tocPage {
+      opacity: 0.75;
+      font-size: 12px;
+      min-width: 42px;
+    }
+    .tocTitle {
+      font-size: 14px;
+      line-height: 1.2;
+    }
+
+    /* Search */
+    #tocSearch {
+      width: 100%;
+      box-sizing: border-box;
+      margin: 8px 0 10px;
+      padding: 10px 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.16);
+      background: rgba(0,0,0,0.35);
+      color: #fff;
+      outline: none;
     }
   </style>
 </head>
 <body>
+
+<button id="menuBtn" aria-label="Оглавление">☰</button>
 
 <div id="app">
   <div id="viewer" class="one">
@@ -87,14 +211,36 @@
 
 <div id="hud"></div>
 
+<!-- TOC -->
+<div id="tocOverlay"></div>
+<aside id="tocDrawer" aria-label="Оглавление">
+  <div class="tocHeader">
+    <h2>Оглавление</h2>
+    <button id="tocClose">Закрыть</button>
+  </div>
+  <input id="tocSearch" placeholder="Поиск (например: борщ)" />
+  <div id="tocList"></div>
+</aside>
+
 <script>
-  // ---- Настрой: список страниц
+  // ====== 1) СТРАНИЦЫ ======
   const pages = [
     "pages/page_1.jpg",
     "pages/page_2.jpg",
     "pages/page_3.jpg",
     "pages/page_4.jpg",
     "pages/page_5.jpg"
+  ];
+
+  // ====== 2) ОГЛАВЛЕНИЕ ======
+  // page = номер страницы (с 1), title = текст
+  // Заполни как тебе нужно:
+  const toc = [
+    { page: 1, title: "Обложка" },
+    { page: 2, title: "Оглавление" },
+    { page: 3, title: "Рецепт: Салат Оливье" },
+    { page: 4, title: "Рецепт: Блинчики" },
+    { page: 5, title: "Рецепт: Плов" }
   ];
 
   const viewer = document.getElementById("viewer");
@@ -104,24 +250,19 @@
   const imgR  = document.getElementById("imgR");
   const hud   = document.getElementById("hud");
 
-  // ---- Определяем режим отображения
+  // ====== iPad landscape => 2 страницы, portrait => 1 ======
   function isIPad() {
-    // iPadOS может маскироваться под Mac, поэтому проверяем touch + ширину
     return navigator.maxTouchPoints > 1 && Math.max(screen.width, screen.height) >= 1024;
   }
-
   function isPortrait() {
     return window.matchMedia("(orientation: portrait)").matches;
   }
-
   function shouldShowTwoPages() {
-    // iPad landscape -> 2 страницы, iPad portrait -> 1 страница
-    // iPhone всегда 1 страница
     return isIPad() && !isPortrait();
   }
 
-  // ---- Состояние книги
-  let index = 0; // индекс левой страницы (в one-page режиме это просто текущая)
+  // ====== Состояние ======
+  let index = 0; // индекс левой страницы
   const zoomState = {
     L: { scale: 1, x: 0, y: 0 },
     R: { scale: 1, x: 0, y: 0 }
@@ -134,7 +275,6 @@
     const img = which === "L" ? imgL : imgR;
     img.style.transform = `translate(${st.x}px, ${st.y}px) scale(${st.scale})`;
   }
-
   function resetZoom(which) {
     zoomState[which] = { scale: 1, x: 0, y: 0 };
     applyTransform(which);
@@ -142,7 +282,6 @@
 
   function setMode() {
     const two = shouldShowTwoPages();
-
     if (two) {
       viewer.classList.remove("one");
       viewer.classList.add("two");
@@ -159,10 +298,8 @@
     const two = shouldShowTwoPages();
 
     if (two) {
-      // Следим, чтобы index был четным (чтобы развороты шли парами)
       if (index % 2 !== 0) index -= 1;
       index = clamp(index, 0, pages.length - 1);
-
       imgL.src = pages[index] ?? "";
       imgR.src = pages[index + 1] ?? "";
       hud.textContent = `${index + 1}–${Math.min(index + 2, pages.length)} / ${pages.length}`;
@@ -172,15 +309,12 @@
       hud.textContent = `${index + 1} / ${pages.length}`;
     }
 
-    // при смене страниц сбрасываем зум (чтобы не “таскать” старый масштаб)
     resetZoom("L");
     resetZoom("R");
   }
 
-  // ---- Листание свайпом (работает, когда не зумим)
-  let swipeStartX = 0;
-  let swipeStartY = 0;
-
+  // ====== Листание свайпом (когда не зум) ======
+  let swipeStartX = 0, swipeStartY = 0;
   function isZoomed() {
     return zoomState.L.scale > 1.01 || zoomState.R.scale > 1.01;
   }
@@ -192,28 +326,20 @@
   }, { passive: true });
 
   document.getElementById("app").addEventListener("touchend", (e) => {
-    if (isZoomed()) return; // когда зум активен — не листаем
+    if (isZoomed()) return;
     const dx = e.changedTouches[0].clientX - swipeStartX;
     const dy = e.changedTouches[0].clientY - swipeStartY;
-
     if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return;
 
     const two = shouldShowTwoPages();
-    if (dx < 0) {
-      // next
-      index += two ? 2 : 1;
-    } else {
-      // prev
-      index -= two ? 2 : 1;
-    }
+    index += (dx < 0) ? (two ? 2 : 1) : (two ? -2 : -1);
     render();
   }, { passive: true });
 
-  // ---- Pinch-zoom + pan (на каждой панели отдельно)
+  // ====== Pinch-zoom + pan ======
   function attachPinchPan(pane, which) {
     let startDist = 0;
     let startScale = 1;
-    let lastX = 0, lastY = 0;
     let startX = 0, startY = 0;
     let isPanning = false;
 
@@ -246,8 +372,7 @@
         e.preventDefault();
         const d = dist(e.touches[0], e.touches[1]);
         const factor = d / startDist;
-        const nextScale = clamp(startScale * factor, 1, 4);
-        zoomState[which].scale = nextScale;
+        zoomState[which].scale = clamp(startScale * factor, 1, 4);
         applyTransform(which);
       } else if (e.touches.length === 1 && isPanning) {
         e.preventDefault();
@@ -258,27 +383,18 @@
     }, { passive: false });
 
     pane.addEventListener("touchend", () => {
-      // если вернулись к масштабу 1 — сбрасываем сдвиги
-      if (zoomState[which].scale <= 1.01) {
-        resetZoom(which);
-      }
+      if (zoomState[which].scale <= 1.01) resetZoom(which);
       isPanning = false;
     }, { passive: true });
 
-    // двойной тап: быстрый зум 1 <-> 2
+    // двойной тап: 1 <-> 2
     let lastTap = 0;
     pane.addEventListener("touchend", (e) => {
       if (e.changedTouches.length !== 1) return;
       const now = Date.now();
       if (now - lastTap < 280) {
-        // toggle
         if (zoomState[which].scale > 1.01) resetZoom(which);
-        else {
-          zoomState[which].scale = 2;
-          zoomState[which].x = 0;
-          zoomState[which].y = 0;
-          applyTransform(which);
-        }
+        else { zoomState[which].scale = 2; zoomState[which].x = 0; zoomState[which].y = 0; applyTransform(which); }
         lastTap = 0;
       } else {
         lastTap = now;
@@ -289,11 +405,57 @@
   attachPinchPan(paneL, "L");
   attachPinchPan(paneR, "R");
 
-  // ---- Реакция на поворот экрана / resize
+  // ====== ОГЛАВЛЕНИЕ UI ======
+  const menuBtn = document.getElementById("menuBtn");
+  const tocOverlay = document.getElementById("tocOverlay");
+  const tocDrawer = document.getElementById("tocDrawer");
+  const tocList = document.getElementById("tocList");
+  const tocClose = document.getElementById("tocClose");
+  const tocSearch = document.getElementById("tocSearch");
+
+  function openToc() {
+    tocOverlay.style.display = "block";
+    tocDrawer.classList.add("open");
+    renderToc(tocSearch.value || "");
+    tocSearch.focus();
+  }
+  function closeToc() {
+    tocDrawer.classList.remove("open");
+    tocOverlay.style.display = "none";
+  }
+
+  function gotoPage(pageNumber1Based) {
+    const targetIndex = clamp(pageNumber1Based - 1, 0, pages.length - 1);
+    index = targetIndex;
+    closeToc();
+    render();
+  }
+
+  function renderToc(filter) {
+    const q = (filter || "").trim().toLowerCase();
+    tocList.innerHTML = "";
+
+    toc
+      .filter(item => !q || item.title.toLowerCase().includes(q) || String(item.page).includes(q))
+      .forEach(item => {
+        const row = document.createElement("div");
+        row.className = "tocItem";
+        row.innerHTML = `<div class="tocPage">стр. ${item.page}</div><div class="tocTitle">${item.title}</div>`;
+        row.addEventListener("click", () => gotoPage(item.page));
+        tocList.appendChild(row);
+      });
+  }
+
+  menuBtn.addEventListener("click", openToc);
+  tocClose.addEventListener("click", closeToc);
+  tocOverlay.addEventListener("click", closeToc);
+  tocSearch.addEventListener("input", () => renderToc(tocSearch.value));
+
+  // ====== Поворот экрана ======
   window.addEventListener("orientationchange", () => setTimeout(setMode, 150));
   window.addEventListener("resize", () => setTimeout(setMode, 150));
 
-  // старт
+  // Старт
   setMode();
 </script>
 
