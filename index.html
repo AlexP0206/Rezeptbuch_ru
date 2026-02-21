@@ -2,148 +2,144 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Тестовая книга</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Rezeptbuch Test</title>
 
   <style>
-  html, body {
-    margin: 0;
-    padding: 0;
-    background: #000;
-    height: 100%;
-    overflow: hidden;
-  }
+    html, body { margin:0; padding:0; height:100%; background:#000; overflow:hidden; }
+    /* iOS-friendly fullscreen */
+    #book { width:100vw; height:100dvh; }
+    .page { width:100%; height:100%; background:#000; }
+    .page img { width:100%; height:100%; object-fit:cover; user-select:none; -webkit-user-drag:none; }
 
-  #book {
-    width: 100vw;
-    height: 100vh;
-  }
-
-  .page {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #000;
-  }
-
-  .page img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover; /* 🔥 теперь на весь экран */
-    user-select: none;
-    -webkit-user-drag: none;
-  }
-</style>
+    /* Сообщения об ошибке */
+    #msg {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      color: #fff;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      text-align: center;
+      background: #000;
+    }
+    #msg .box {
+      max-width: 520px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 14px;
+      padding: 18px 16px;
+    }
+    #msg code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  </style>
 </head>
 <body>
 
 <div id="book"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.js"></script>
+<div id="msg">
+  <div class="box" id="msgText"></div>
+</div>
 
 <script>
-const pages = [
-  "pages/page_1.jpg",
-  "pages/page_2.jpg",
-  "pages/page_3.jpg",
-  "pages/page_4.jpg",
-  "pages/page_5.jpg"
-];
-
-const book = document.getElementById("book");
-
-// Создаём HTML-страницы один раз
-pages.forEach(src => {
-  const page = document.createElement("div");
-  page.className = "page";
-
-  const img = document.createElement("img");
-  img.src = src;
-  img.alt = "";
-
-  page.appendChild(img);
-  book.appendChild(page);
-});
-
-let pageFlip = null;
-
-// Определяем: 1 страница или разворот
-function isSinglePageMode() {
-  // Порог можно менять: 820–900 обычно хорошо отделяет iPhone от iPad
-  return window.innerWidth < 820 || window.innerWidth < window.innerHeight;
-}
-
-function initOrReinit() {
-  const book = document.getElementById("book");
-  const currentPage = pageFlip ? pageFlip.getCurrentPageIndex() : 0;
-
-  if (pageFlip) {
-    try { pageFlip.destroy(); } catch (e) {}
-    pageFlip = null;
+  // --- helper: показать ошибку на экране (важно для iPhone/iPad без консоли)
+  function showMsg(html) {
+    const msg = document.getElementById("msg");
+    const box = document.getElementById("msgText");
+    box.innerHTML = html;
+    msg.style.display = "flex";
   }
 
-  const isPhone = window.innerWidth < 700;
+  // --- страницы (как у тебя)
+  const pages = [
+    "pages/page_1.jpg",
+    "pages/page_2.jpg",
+    "pages/page_3.jpg",
+    "pages/page_4.jpg",
+    "pages/page_5.jpg"
+  ];
 
-  // твоя пропорция 21.5 / 26 ≈ 0.827
-  const baseWidth = 620;
-  const baseHeight = 750;
-
-  const pageW = isPhone ? 2000 : baseWidth;
-  const pageH = isPhone ? 2600 : baseHeight;
-
-  pageFlip = new St.PageFlip(book, {
-    width: pageW,
-    height: pageH,
-    size: "stretch",
-
-    minWidth: 320,
-    maxWidth: 2000,
-    minHeight: 450,
-    maxHeight: 2600,
-
-    showCover: false,
-    usePortrait: true,
-    maxShadowOpacity: 0.3,
-    mobileScrollSupport: false
+  // --- создаём DOM страниц
+  const book = document.getElementById("book");
+  pages.forEach(src => {
+    const page = document.createElement("div");
+    page.className = "page";
+    const img = document.createElement("img");
+    img.src = src;
+    img.alt = "";
+    page.appendChild(img);
+    book.appendChild(page);
   });
 
-  pageFlip.loadFromHTML(document.querySelectorAll(".page"));
+  // --- загрузчик библиотеки с fallback (jsDelivr -> unpkg)
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = src;
+      s.onload = resolve;
+      s.onerror = () => reject(new Error("Failed to load: " + src));
+      document.head.appendChild(s);
+    });
+  }
 
-  try { pageFlip.flip(currentPage); } catch (e) {}
-}
+  async function main() {
+    // 1) пробуем jsDelivr
+    try {
+      await loadScript("https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.js");
+    } catch (e1) {
+      // 2) fallback на unpkg
+      try {
+        await loadScript("https://unpkg.com/page-flip@2.0.7/dist/js/page-flip.browser.js");
+      } catch (e2) {
+        showMsg(
+          "❌ Не удалось загрузить библиотеку перелистывания на этом устройстве.<br><br>" +
+          "Проверь, открывается ли в Safari ссылка:<br>" +
+          "<code>cdn.jsdelivr.net</code> или <code>unpkg.com</code><br><br>" +
+          "Ошибка 1: <code>" + e1.message + "</code><br>" +
+          "Ошибка 2: <code>" + e2.message + "</code>"
+        );
+        return;
+      }
+    }
 
-  const single = isSinglePageMode();
+    if (!window.St || !St.PageFlip) {
+      showMsg("❌ Библиотека загрузилась некорректно: <code>St.PageFlip</code> не найден.");
+      return;
+    }
 
-  pageFlip = new St.PageFlip(book, {
-    width: 600,
-    height: 800,
-    size: "stretch",
-    showCover: true,
+    // --- режимы: iPhone = 1 страница, iPad/desktop = разворот
+    const isPhone = window.matchMedia("(max-width: 700px)").matches;
 
-    // ключ: на узких/портретных экранах будет 1 страница
-    usePortrait: single,
+    // Пропорция страницы ~ 21.5/26 = 0.827
+    // На iPhone форсим single-page: делаем логическую ширину страницы слишком большой,
+    // чтобы две страницы не помещались рядом.
+    const pageW = isPhone ? 1200 : 827;
+    const pageH = isPhone ? 1450 : 1000;
 
-    maxShadowOpacity: 0.3,
-    mobileScrollSupport: false
+    const flip = new St.PageFlip(book, {
+      width: pageW,
+      height: pageH,
+      size: "stretch",
+      showCover: false,
+      usePortrait: true,
+      maxShadowOpacity: 0.25,
+      mobileScrollSupport: false,
+
+      // стабилизация stretch:
+      minWidth: 320,
+      maxWidth: 1400,
+      minHeight: 450,
+      maxHeight: 1600
+    });
+
+    flip.loadFromHTML(document.querySelectorAll(".page"));
+  }
+
+  main().catch(err => {
+    showMsg("❌ Ошибка запуска: <code>" + (err?.message || err) + "</code>");
   });
-
-  pageFlip.loadFromHTML(document.querySelectorAll(".page"));
-
-  // вернуть пользователя на ту же страницу
-  try { pageFlip.flip(currentPage); } catch(e) {}
-}
-
-// первая инициализация
-initOrReinit();
-
-// переинициализация при смене ориентации/размера
-let resizeTimer = null;
-window.addEventListener("resize", () => {
-  clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(() => initOrReinit(), 250);
-});
 </script>
 
 </body>
