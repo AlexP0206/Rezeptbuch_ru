@@ -260,6 +260,7 @@
 
     // ---- состояние ----
     let index = 0;
+    let suppressTapUntil = 0;
 
     const zoomState = {
       L: { scale: 1, x: 0, y: 0 },
@@ -392,18 +393,21 @@
       }, { passive: true });
 
       // двойной тап: 1 <-> 2
-      let lastTap = 0;
-      pane.addEventListener("touchend", (e) => {
-        if (e.changedTouches.length !== 1) return;
-        const now = Date.now();
-        if (now - lastTap < 280) {
-          if (zoomState[which].scale > 1.01) resetZoom(which);
-          else { zoomState[which].scale = 2; zoomState[which].x = 0; zoomState[which].y = 0; applyTransform(which); }
-          lastTap = 0;
-        } else {
-          lastTap = now;
-        }
-      }, { passive: true });
+     
+let lastTap = 0;
+pane.addEventListener("touchend", (e) => {
+  if (Date.now() < suppressTapUntil) return;   // ✅ подавляем ложный double-tap после оглавления
+  if (e.changedTouches.length !== 1) return;
+
+  const now = Date.now();
+  if (now - lastTap < 280) {
+    if (zoomState[which].scale > 1.01) resetZoom(which);
+    else { zoomState[which].scale = 2; zoomState[which].x = 0; zoomState[which].y = 0; applyTransform(which); }
+    lastTap = 0;
+  } else {
+    lastTap = now;
+  }
+}, { passive: true });
     }
 
     attachPinchPan(paneL, "L");
@@ -429,19 +433,19 @@
     }
 
   function gotoPage(pageNumber1Based) {
-  index = clamp(pageNumber1Based - 1, 0, pages.length - 1);
+  // подавляем случайный double-tap сразу после клика по оглавлению
+  suppressTapUntil = Date.now() + 450;
 
-  resetZoom("L");
-  resetZoom("R");
+  index = clamp(pageNumber1Based - 1, 0, pages.length - 1);
 
   closeToc();
   render();
 
-  // повтор через тик — на iOS бывает полезно
-  setTimeout(() => {
+  // iOS: иногда transform применяет не сразу — сбросим zoom ещё раз после кадра
+  requestAnimationFrame(() => {
     resetZoom("L");
     resetZoom("R");
-  }, 0);
+  });
 }
 
     function renderToc(filter) {
