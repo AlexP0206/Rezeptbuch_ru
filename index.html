@@ -447,10 +447,20 @@
     }
 
   function gotoPage(pageNumber1Based) {
-  suppressTapUntil = Date.now() + 450; // чтобы тап по меню не стал double-tap по странице
+  suppressTapUntil = Date.now() + 450;
+
   index = clamp(pageNumber1Based - 1, 0, pages.length - 1);
+
   closeToc();
-  render(); // render уже делает resetZoom("L") и resetZoom("R")
+  render();
+
+  // ✅ ВАЖНО: принудительно центрируем контейнер
+  document.getElementById("app").scrollTo(0, 0);
+
+  // И ещё раз через кадр (Safari иногда сдвигает позже)
+  requestAnimationFrame(() => {
+    document.getElementById("app").scrollTo(0, 0);
+  });
 }
 
     function renderToc(filter) {
