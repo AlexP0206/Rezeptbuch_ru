@@ -3,143 +3,107 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Rezeptbuch Test</title>
+  <title>Rezeptbuch</title>
 
   <style>
-    html, body { margin:0; padding:0; height:100%; background:#000; overflow:hidden; }
-    /* iOS-friendly fullscreen */
-    #book { width:100vw; height:100dvh; }
-    .page { width:100%; height:100%; background:#000; }
-    .page img { width:100%; height:100%; object-fit:cover; user-select:none; -webkit-user-drag:none; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background: #000;
+      overflow: hidden;
+    }
 
-    /* Сообщения об ошибке */
-    #msg {
-      position: fixed;
-      inset: 0;
-      display: none;
+    #book {
+      width: 100vw;
+      height: 100dvh;
+    }
+
+    .page {
+      width: 100%;
+      height: 100%;
+      background: #000;
+      display: flex;
       align-items: center;
       justify-content: center;
-      padding: 24px;
-      color: #fff;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
-      text-align: center;
-      background: #000;
     }
-    #msg .box {
-      max-width: 520px;
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.18);
-      border-radius: 14px;
-      padding: 18px 16px;
+
+    .page img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      user-select: none;
+      -webkit-user-drag: none;
     }
-    #msg code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   </style>
 </head>
 <body>
 
 <div id="book"></div>
 
-<div id="msg">
-  <div class="box" id="msgText"></div>
-</div>
+<!-- Flip library -->
+<script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.js"></script>
+
+<!-- Pinch zoom library -->
+<script src="https://unpkg.com/pinch-zoom-js@2.3.5/dist/pinch-zoom.min.js"></script>
 
 <script>
-  // --- helper: показать ошибку на экране (важно для iPhone/iPad без консоли)
-  function showMsg(html) {
-    const msg = document.getElementById("msg");
-    const box = document.getElementById("msgText");
-    box.innerHTML = html;
-    msg.style.display = "flex";
-  }
+const pages = [
+  "pages/page_1.jpg",
+  "pages/page_2.jpg",
+  "pages/page_3.jpg",
+  "pages/page_4.jpg",
+  "pages/page_5.jpg"
+];
 
-  // --- страницы (как у тебя)
-  const pages = [
-    "pages/page_1.jpg",
-    "pages/page_2.jpg",
-    "pages/page_3.jpg",
-    "pages/page_4.jpg",
-    "pages/page_5.jpg"
-  ];
+const book = document.getElementById("book");
+const isPhone = window.matchMedia("(max-width: 700px)").matches;
 
-  // --- создаём DOM страниц
-  const book = document.getElementById("book");
-  pages.forEach(src => {
-    const page = document.createElement("div");
-    page.className = "page";
-    const img = document.createElement("img");
-    img.src = src;
-    img.alt = "";
+// создаём страницы
+pages.forEach(src => {
+  const page = document.createElement("div");
+  page.className = "page";
+
+  const img = document.createElement("img");
+  img.src = src;
+
+  if (isPhone) {
+    // 📱 Zoom режим
+    const wrapper = document.createElement("div");
+    wrapper.style.width = "100%";
+    wrapper.style.height = "100%";
+
+    wrapper.appendChild(img);
+    page.appendChild(wrapper);
+
+    setTimeout(() => {
+      new PinchZoom(wrapper, {
+        draggableUnzoomed: false,
+        minZoom: 1,
+        maxZoom: 4
+      });
+    }, 0);
+
+  } else {
     page.appendChild(img);
-    book.appendChild(page);
-  });
-
-  // --- загрузчик библиотеки с fallback (jsDelivr -> unpkg)
-  function loadScript(src) {
-    return new Promise((resolve, reject) => {
-      const s = document.createElement("script");
-      s.src = src;
-      s.onload = resolve;
-      s.onerror = () => reject(new Error("Failed to load: " + src));
-      document.head.appendChild(s);
-    });
   }
 
-  async function main() {
-    // 1) пробуем jsDelivr
-    try {
-      await loadScript("https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.js");
-    } catch (e1) {
-      // 2) fallback на unpkg
-      try {
-        await loadScript("https://unpkg.com/page-flip@2.0.7/dist/js/page-flip.browser.js");
-      } catch (e2) {
-        showMsg(
-          "❌ Не удалось загрузить библиотеку перелистывания на этом устройстве.<br><br>" +
-          "Проверь, открывается ли в Safari ссылка:<br>" +
-          "<code>cdn.jsdelivr.net</code> или <code>unpkg.com</code><br><br>" +
-          "Ошибка 1: <code>" + e1.message + "</code><br>" +
-          "Ошибка 2: <code>" + e2.message + "</code>"
-        );
-        return;
-      }
-    }
+  book.appendChild(page);
+});
 
-    if (!window.St || !St.PageFlip) {
-      showMsg("❌ Библиотека загрузилась некорректно: <code>St.PageFlip</code> не найден.");
-      return;
-    }
+// --- iPhone: одна страница
+// --- iPad/Desktop: разворот
 
-    // --- режимы: iPhone = 1 страница, iPad/desktop = разворот
-    const isPhone = window.matchMedia("(max-width: 700px)").matches;
+const pageFlip = new St.PageFlip(book, {
+  width: isPhone ? 1200 : 827,
+  height: isPhone ? 1600 : 1000,
+  size: "stretch",
+  showCover: false,
+  usePortrait: true,
+  maxShadowOpacity: 0.25
+});
 
-    // Пропорция страницы ~ 21.5/26 = 0.827
-    // На iPhone форсим single-page: делаем логическую ширину страницы слишком большой,
-    // чтобы две страницы не помещались рядом.
-    const pageW = isPhone ? 1200 : 827;
-    const pageH = isPhone ? 1450 : 1000;
-
-    const flip = new St.PageFlip(book, {
-      width: pageW,
-      height: pageH,
-      size: "stretch",
-      showCover: true,
-      usePortrait: true,
-      maxShadowOpacity: 0.25,
-      mobileScrollSupport: false,
-
-      // стабилизация stretch:
-      minWidth: 320,
-      maxWidth: 1400,
-      minHeight: 450,
-      maxHeight: 1600
-    });
-
-    flip.loadFromHTML(document.querySelectorAll(".page"));
-  }
-
-  main().catch(err => {
-    showMsg("❌ Ошибка запуска: <code>" + (err?.message || err) + "</code>");
-  });
+pageFlip.loadFromHTML(document.querySelectorAll(".page"));
 </script>
 
 </body>
