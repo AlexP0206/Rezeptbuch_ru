@@ -428,11 +428,21 @@
       tocOverlay.style.display = "none";
     }
 
-    function gotoPage(pageNumber1Based) {
-      index = clamp(pageNumber1Based - 1, 0, pages.length - 1);
-      closeToc();
-      render();
-    }
+  function gotoPage(pageNumber1Based) {
+  index = clamp(pageNumber1Based - 1, 0, pages.length - 1);
+
+  resetZoom("L");
+  resetZoom("R");
+
+  closeToc();
+  render();
+
+  // повтор через тик — на iOS бывает полезно
+  setTimeout(() => {
+    resetZoom("L");
+    resetZoom("R");
+  }, 0);
+}
 
     function renderToc(filter) {
       const q = (filter || "").trim().toLowerCase();
