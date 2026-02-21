@@ -8,7 +8,56 @@
 </head>
 <body>
 
-<h1 style="text-align:center;">Тестовая книга</h1>
+<div class="topbar">
+  <button id="prev">◀</button>
+  <div class="title">Тестовая книга (5 страниц)</div>
+  <button id="next">▶</button>
+</div>
+
+<div id="book"></div>
+
+<!-- Подключаем библиотеку перелистывания через CDN -->
+<script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.js"></script>
+
+<script>
+const pages = [
+  "pages/page_1.jpg",
+  "pages/page_2.jpg",
+  "pages/page_3.jpg",
+  "pages/page_4.jpg",
+  "pages/page_5.jpg"
+];
+
+const book = document.getElementById("book");
+
+// Создаём HTML-страницы
+pages.forEach(src => {
+  const page = document.createElement("div");
+  page.className = "page";
+
+  const img = document.createElement("img");
+  img.src = src;
+  img.alt = "";
+
+  page.appendChild(img);
+  book.appendChild(page);
+});
+
+// Запускаем flipbook
+const pageFlip = new St.PageFlip(book, {
+  width: 550,
+  height: 750,
+  size: "stretch",
+  showCover: true,
+  maxShadowOpacity: 0.3,
+  mobileScrollSupport: false
+});
+
+pageFlip.loadFromHTML(document.querySelectorAll(".page"));
+
+document.getElementById("prev").addEventListener("click", () => pageFlip.flipPrev());
+document.getElementById("next").addEventListener("click", () => pageFlip.flipNext());
+</script>
 
 </body>
 </html>
