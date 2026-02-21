@@ -16,8 +16,8 @@
     }
 
     #book {
-      width: 95vw;
-      height: 95vh;
+      width: 96vw;
+      height: 96vh;
     }
 
     .page {
@@ -33,6 +33,8 @@
       width: 100%;
       height: 100%;
       object-fit: contain;
+      user-select: none;
+      -webkit-user-drag: none;
     }
   </style>
 </head>
@@ -53,26 +55,66 @@ const pages = [
 
 const book = document.getElementById("book");
 
+// Создаём HTML-страницы один раз
 pages.forEach(src => {
   const page = document.createElement("div");
   page.className = "page";
 
   const img = document.createElement("img");
   img.src = src;
+  img.alt = "";
 
   page.appendChild(img);
   book.appendChild(page);
 });
 
-const pageFlip = new St.PageFlip(book, {
-  width: 600,
-  height: 800,
-  size: "stretch",
-  usePortrait: true,   // 🔥 ключевой параметр
-  showCover: false
-});
+let pageFlip = null;
 
-pageFlip.loadFromHTML(document.querySelectorAll(".page"));
+// Определяем: 1 страница или разворот
+function isSinglePageMode() {
+  // Порог можно менять: 820–900 обычно хорошо отделяет iPhone от iPad
+  return window.innerWidth < 820 || window.innerWidth < window.innerHeight;
+}
+
+function initOrReinit() {
+  const currentPage = pageFlip ? pageFlip.getCurrentPageIndex() : 0;
+
+  // если уже есть — удаляем, чтобы пересоздать с другим режимом
+  if (pageFlip) {
+    try { pageFlip.destroy(); } catch(e) {}
+    pageFlip = null;
+  }
+
+  const single = isSinglePageMode();
+
+  pageFlip = new St.PageFlip(book, {
+    width: 600,
+    height: 800,
+    size: "stretch",
+    showCover: false,
+
+    // ключ: на узких/портретных экранах будет 1 страница
+    usePortrait: single,
+
+    maxShadowOpacity: 0.3,
+    mobileScrollSupport: false
+  });
+
+  pageFlip.loadFromHTML(document.querySelectorAll(".page"));
+
+  // вернуть пользователя на ту же страницу
+  try { pageFlip.flip(currentPage); } catch(e) {}
+}
+
+// первая инициализация
+initOrReinit();
+
+// переинициализация при смене ориентации/размера
+let resizeTimer = null;
+window.addEventListener("resize", () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => initOrReinit(), 250);
+});
 </script>
 
 </body>
