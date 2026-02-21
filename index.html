@@ -6,37 +6,36 @@
   <title>Тестовая книга</title>
 
   <style>
-    body {
-      margin: 0;
-      background: #1a1a1a;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #000;
+    height: 100%;
+    overflow: hidden;
+  }
 
-    #book {
-      width: 96vw;
-      height: 96vh;
-    }
+  #book {
+    width: 100vw;
+    height: 100vh;
+  }
 
-    .page {
-      width: 100%;
-      height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #000;
-    }
+  .page {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+  }
 
-    .page img {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      user-select: none;
-      -webkit-user-drag: none;
-    }
-  </style>
+  .page img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* 🔥 теперь на весь экран */
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+</style>
 </head>
 <body>
 
@@ -87,12 +86,12 @@ function initOrReinit() {
 
   const isPhone = window.innerWidth < 700;
 
-  // базовая пропорция 21.5 / 26
+  // твоя пропорция 21.5 / 26 ≈ 0.827
   const baseWidth = 620;
   const baseHeight = 750;
 
-  const pageW = isPhone ? 1600 : baseWidth;
-  const pageH = isPhone ? 2000 : baseHeight;
+  const pageW = isPhone ? 2000 : baseWidth;
+  const pageH = isPhone ? 2600 : baseHeight;
 
   pageFlip = new St.PageFlip(book, {
     width: pageW,
@@ -100,9 +99,9 @@ function initOrReinit() {
     size: "stretch",
 
     minWidth: 320,
-    maxWidth: 1400,
+    maxWidth: 2000,
     minHeight: 450,
-    maxHeight: 900,
+    maxHeight: 2600,
 
     showCover: false,
     usePortrait: true,
