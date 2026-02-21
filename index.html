@@ -14,10 +14,9 @@
       overflow: hidden;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
       color: #fff;
-      touch-action: none;
     }
 
-    /* Полноэкранный контейнер */
+    /* Всегда чёрный фон, на весь экран */
     #app {
       width: 100vw;
       height: 100vh;    /* fallback */
@@ -26,61 +25,71 @@
       padding: env(safe-area-inset-top) env(safe-area-inset-right)
                env(safe-area-inset-bottom) env(safe-area-inset-left);
       box-sizing: border-box;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      position: relative;
     }
 
-    /* viewer занимает всё доступное место */
+    /* viewer занимает всё пространство */
     #viewer {
       width: 100%;
       height: 100%;
       display: grid;
       background: #000;
     }
-
-    /* 1 или 2 страницы */
     #viewer.one { grid-template-columns: 1fr; }
     #viewer.two { grid-template-columns: 1fr 1fr; }
 
-    /* Прячем правую страницу, когда режим one */
+    /* Правую панель прячем в режиме одной страницы */
     #viewer.one #paneR { display: none; }
-    #viewer.two #paneR { display: grid; }
+    #viewer.two #paneR { display: flex; }
 
-    /* Каждая панель — центрирует страницу */
+    /* Панель страницы */
     .pane {
       width: 100%;
       height: 100%;
       background: #000;
-      display: grid;
-      place-items: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       overflow: hidden;
-      touch-action: none;
+
+      /* важно для pinch: мы будем предотвращать дефолтные жесты в JS только при pinch */
+      touch-action: manipulation;
     }
 
-    /* Ключ: responsive-страница с пропорцией 21.5 / 26 */
-    .pageWrapper {
-      aspect-ratio: 21.5 / 26;
-
-      /* Вписываемся одновременно и по ширине, и по высоте */
-      width: min(100%, calc(100dvh * 0.826923)); /* 21.5/26 = 0.826923 */
+    /* СТАБИЛЬНЫЙ RESPONSIVE:
+       картинка всегда ВПИСЫВАЕТСЯ целиком (без обрезки) */
+    .pane img {
       max-width: 100%;
       max-height: 100%;
-
+      width: auto;
+      height: auto;
       display: block;
-    }
 
-    .pageWrapper img {
-      width: 100%;
-      height: 100%;
-      display: block;
-      object-fit: contain; /* ✅ всегда целиком */
-      background: #000;
+      /* чтобы при больших JPG не резало */
+      object-fit: contain;
+
       transform-origin: center center;
       will-change: transform;
+
       user-select: none;
       -webkit-user-drag: none;
       pointer-events: none; /* жесты ловит pane */
+    }
+
+    /* Кнопка оглавления */
+    #menuBtn {
+      position: fixed;
+      top: calc(10px + env(safe-area-inset-top));
+      left: calc(10px + env(safe-area-inset-left));
+      z-index: 50;
+      border: 1px solid rgba(255,255,255,0.25);
+      background: rgba(0,0,0,0.6);
+      color: #fff;
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 16px;
+      line-height: 1;
+      cursor: pointer;
     }
 
     /* Индикатор страниц */
@@ -89,43 +98,146 @@
       left: 50%;
       bottom: 10px;
       transform: translateX(-50%);
-      background: rgba(0,0,0,0.55);
+      background: rgba(0,0,0,0.60);
       padding: 6px 10px;
       border-radius: 999px;
       font-size: 14px;
-      z-index: 20;
+      z-index: 40;
       pointer-events: none;
+    }
+
+    /* Оглавление (панель) */
+    #tocOverlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      display: none;
+      z-index: 60;
+    }
+
+    #tocDrawer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: min(360px, 86vw);
+      height: 100vh;
+      height: 100dvh;
+      background: rgba(10,10,10,0.92);
+      border-right: 1px solid rgba(255,255,255,0.12);
+      transform: translateX(-110%);
+      transition: transform 160ms ease;
+      z-index: 61;
+      display: flex;
+      flex-direction: column;
+      padding: calc(12px + env(safe-area-inset-top)) 12px 12px calc(12px + env(safe-area-inset-left));
+      box-sizing: border-box;
+    }
+
+    #tocDrawer.open { transform: translateX(0); }
+
+    .tocHeader {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .tocHeader h2 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 700;
+    }
+    .tocHeader button {
+      border: 1px solid rgba(255,255,255,0.25);
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+      border-radius: 12px;
+      padding: 8px 10px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    #tocSearch {
+      width: 100%;
+      box-sizing: border-box;
+      margin: 8px 0 10px;
+      padding: 10px 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.16);
+      background: rgba(0,0,0,0.35);
+      color: #fff;
+      outline: none;
+    }
+
+    #tocList {
+      overflow: auto;
+      padding-right: 6px;
+    }
+
+    .tocItem {
+      display: flex;
+      gap: 10px;
+      align-items: baseline;
+      padding: 10px 8px;
+      border-radius: 12px;
+      cursor: pointer;
+      border: 1px solid transparent;
+    }
+    .tocItem:hover {
+      background: rgba(255,255,255,0.06);
+      border-color: rgba(255,255,255,0.10);
+    }
+    .tocPage {
+      opacity: 0.75;
+      font-size: 12px;
+      min-width: 54px;
+    }
+    .tocTitle {
+      font-size: 14px;
+      line-height: 1.2;
     }
   </style>
 </head>
 
 <body>
+  <button id="menuBtn" aria-label="Оглавление">☰</button>
+
   <div id="app">
     <div id="viewer" class="one">
-      <div class="pane" id="paneL">
-        <div class="pageWrapper">
-          <img id="imgL" alt="">
-        </div>
-      </div>
-
-      <div class="pane" id="paneR">
-        <div class="pageWrapper">
-          <img id="imgR" alt="">
-        </div>
-      </div>
+      <div class="pane" id="paneL"><img id="imgL" alt=""></div>
+      <div class="pane" id="paneR"><img id="imgR" alt=""></div>
     </div>
   </div>
 
   <div id="hud"></div>
 
+  <div id="tocOverlay"></div>
+  <aside id="tocDrawer" aria-label="Оглавление">
+    <div class="tocHeader">
+      <h2>Оглавление</h2>
+      <button id="tocClose">Закрыть</button>
+    </div>
+    <input id="tocSearch" placeholder="Поиск (например: борщ)" />
+    <div id="tocList"></div>
+  </aside>
+
   <script>
-    // ====== ТВОИ СТРАНИЦЫ ======
+    // ====== СТРАНИЦЫ (пути должны существовать) ======
     const pages = [
       "pages/page_1.jpg",
       "pages/page_2.jpg",
       "pages/page_3.jpg",
       "pages/page_4.jpg",
       "pages/page_5.jpg"
+    ];
+
+    // ====== ОГЛАВЛЕНИЕ (пример, меняй под себя) ======
+    const toc = [
+      { page: 1, title: "Обложка" },
+      { page: 2, title: "Оглавление" },
+      { page: 3, title: "Салаты/Salate" },
+      { page: 4, title: "Рецепт: Салат Оливье" },
+      { page: 5, title: "Rezept: Salat Olivie" }
     ];
 
     const viewer = document.getElementById("viewer");
@@ -135,7 +247,7 @@
     const imgR   = document.getElementById("imgR");
     const hud    = document.getElementById("hud");
 
-    // iPad: landscape=2 страницы, portrait=1
+    // ---- iPad: landscape=2 страницы, portrait=1 ----
     function isIPad() {
       return navigator.maxTouchPoints > 1 && Math.max(screen.width, screen.height) >= 1024;
     }
@@ -146,10 +258,9 @@
       return isIPad() && !isPortrait();
     }
 
-    // Текущая страница (левая)
+    // ---- состояние ----
     let index = 0;
 
-    // Zoom состояния для каждой панели
     const zoomState = {
       L: { scale: 1, x: 0, y: 0 },
       R: { scale: 1, x: 0, y: 0 }
@@ -159,7 +270,7 @@
 
     function applyTransform(which) {
       const st = zoomState[which];
-      const img = which === "L" ? imgL : imgR;
+      const img = (which === "L") ? imgL : imgR;
       img.style.transform = `translate(${st.x}px, ${st.y}px) scale(${st.scale})`;
     }
 
@@ -170,7 +281,6 @@
 
     function setModeAndRender() {
       const two = shouldShowTwoPages();
-
       if (two) {
         viewer.classList.remove("one");
         viewer.classList.add("two");
@@ -178,7 +288,6 @@
         viewer.classList.remove("two");
         viewer.classList.add("one");
       }
-
       render();
     }
 
@@ -186,7 +295,6 @@
       const two = shouldShowTwoPages();
 
       if (two) {
-        // делаем развороты парами
         if (index % 2 !== 0) index -= 1;
         index = clamp(index, 0, pages.length - 1);
 
@@ -200,12 +308,11 @@
         hud.textContent = `${index + 1} / ${pages.length}`;
       }
 
-      // При смене страницы сбрасываем zoom
       resetZoom("L");
       resetZoom("R");
     }
 
-    // ====== Свайп для листания (только если zoom=1) ======
+    // ====== СВАЙП ДЛЯ ЛИСТАНИЯ (только если zoom=1) ======
     let swipeStartX = 0, swipeStartY = 0;
 
     function isZoomed() {
@@ -224,17 +331,16 @@
       const dx = e.changedTouches[0].clientX - swipeStartX;
       const dy = e.changedTouches[0].clientY - swipeStartY;
 
-      // Листаем только если горизонтальный свайп заметный
       if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return;
 
       const two = shouldShowTwoPages();
-      if (dx < 0) index += two ? 2 : 1;  // next
-      else index -= two ? 2 : 1;         // prev
+      if (dx < 0) index += two ? 2 : 1;
+      else index -= two ? 2 : 1;
 
       render();
     }, { passive: true });
 
-    // ====== Pinch-zoom + перетаскивание увеличенного ======
+    // ====== PINCH-ZOOM + PAN ======
     function attachPinchPan(pane, which) {
       let startDist = 0;
       let startScale = 1;
@@ -248,7 +354,6 @@
       }
 
       pane.addEventListener("touchstart", (e) => {
-        // если правая панель скрыта — не обрабатываем
         if (which === "R" && viewer.classList.contains("one")) return;
 
         if (e.touches.length === 2) {
@@ -282,12 +387,11 @@
       }, { passive: false });
 
       pane.addEventListener("touchend", () => {
-        // если вернулись к 1 — сбрасываем сдвиг
         if (zoomState[which].scale <= 1.01) resetZoom(which);
         isPanning = false;
       }, { passive: true });
 
-      // двойной тап: быстрый зум 1 <-> 2
+      // двойной тап: 1 <-> 2
       let lastTap = 0;
       pane.addEventListener("touchend", (e) => {
         if (e.changedTouches.length !== 1) return;
@@ -305,7 +409,52 @@
     attachPinchPan(paneL, "L");
     attachPinchPan(paneR, "R");
 
-    // Поворот/resize: iPad портрет/ландшафт переключает 1/2 страницы
+    // ====== ОГЛАВЛЕНИЕ UI ======
+    const menuBtn = document.getElementById("menuBtn");
+    const tocOverlay = document.getElementById("tocOverlay");
+    const tocDrawer = document.getElementById("tocDrawer");
+    const tocList = document.getElementById("tocList");
+    const tocClose = document.getElementById("tocClose");
+    const tocSearch = document.getElementById("tocSearch");
+
+    function openToc() {
+      tocOverlay.style.display = "block";
+      tocDrawer.classList.add("open");
+      renderToc(tocSearch.value || "");
+      tocSearch.focus();
+    }
+    function closeToc() {
+      tocDrawer.classList.remove("open");
+      tocOverlay.style.display = "none";
+    }
+
+    function gotoPage(pageNumber1Based) {
+      index = clamp(pageNumber1Based - 1, 0, pages.length - 1);
+      closeToc();
+      render();
+    }
+
+    function renderToc(filter) {
+      const q = (filter || "").trim().toLowerCase();
+      tocList.innerHTML = "";
+
+      toc
+        .filter(item => !q || item.title.toLowerCase().includes(q) || String(item.page).includes(q))
+        .forEach(item => {
+          const row = document.createElement("div");
+          row.className = "tocItem";
+          row.innerHTML = `<div class="tocPage">стр. ${item.page}</div><div class="tocTitle">${item.title}</div>`;
+          row.addEventListener("click", () => gotoPage(item.page));
+          tocList.appendChild(row);
+        });
+    }
+
+    menuBtn.addEventListener("click", openToc);
+    tocClose.addEventListener("click", closeToc);
+    tocOverlay.addEventListener("click", closeToc);
+    tocSearch.addEventListener("input", () => renderToc(tocSearch.value));
+
+    // Поворот/resize: iPad portrait/landscape переключает 1/2 страницы
     window.addEventListener("orientationchange", () => setTimeout(setModeAndRender, 150));
     window.addEventListener("resize", () => setTimeout(setModeAndRender, 150));
 
