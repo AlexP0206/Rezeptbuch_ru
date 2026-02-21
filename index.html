@@ -14,11 +14,10 @@
       height: 100%;
     }
 
-    /* Реальный fullscreen на iOS: dvh + fallback + safe-area */
     #book {
       width: 100vw;
-      height: 100vh;              /* fallback */
-      height: 100dvh;             /* iOS 16+ корректно */
+      height: 100vh;   /* fallback */
+      height: 100dvh;  /* iOS 16+ */
       padding: env(safe-area-inset-top) env(safe-area-inset-right)
                env(safe-area-inset-bottom) env(safe-area-inset-left);
       box-sizing: border-box;
@@ -26,21 +25,28 @@
     }
 
     .page {
-  width: 100%;
-  height: 100%;
-  background: #000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
+      width: 100%;
+      height: 100%;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
 
-.page img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain; /* ✅ показывает целиком, без обрезки */
-  user-select: none;
-  -webkit-user-drag: none;
-}
+    /* По умолчанию показываем целиком */
+    .page img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      user-select: none;
+      -webkit-user-drag: none;
+      touch-action: manipulation; /* чтобы iOS не “думал” про двойной зум страницы */
+    }
+
+    /* Режим “на весь экран” (будет обрезка) */
+    .page img.fit-cover {
+      object-fit: cover;
+    }
 
     /* Сообщения об ошибке */
     #msg {
@@ -90,16 +96,38 @@
   ];
 
   const book = document.getElementById("book");
+
+  // Создаём DOM страниц
   pages.forEach(src => {
     const page = document.createElement("div");
     page.className = "page";
+
     const img = document.createElement("img");
     img.src = src;
     img.alt = "";
+
     page.appendChild(img);
     book.appendChild(page);
   });
 
+  // --- Двойной тап: contain <-> cover
+  // Срабатывает по тапу по картинке, переключает класс fit-cover
+  let lastTap = 0;
+  book.addEventListener("touchend", (e) => {
+    const target = e.target;
+    if (!target || target.tagName !== "IMG") return;
+
+    const now = Date.now();
+    if (now - lastTap < 300) {
+      // double tap
+      target.classList.toggle("fit-cover");
+      lastTap = 0;
+    } else {
+      lastTap = now;
+    }
+  }, { passive: true });
+
+  // --- загрузчик библиотеки с fallback (jsDelivr -> unpkg)
   function loadScript(src) {
     return new Promise((resolve, reject) => {
       const s = document.createElement("script");
@@ -133,10 +161,10 @@
       return;
     }
 
+    // Режимы: iPhone = 1 страница, iPad/desktop = разворот
     const isPhone = window.matchMedia("(max-width: 700px)").matches;
 
-    // На телефоне форсим 1 страницу, но под экран:
-    // делаем "логическую" страницу высокой, чтобы растяжение заполняло экран.
+    // Пропорция страницы ~ 21.5/26 = 0.827
     const pageW = isPhone ? 1100 : 827;
     const pageH = isPhone ? 1700 : 1000;
 
@@ -144,13 +172,10 @@
       width: pageW,
       height: pageH,
       size: "stretch",
-
-      showCover: true,       // ✅ важно: иначе будет "обложка" и сдвиги/поля
+      showCover: false,
       usePortrait: true,
-
       maxShadowOpacity: 0.25,
       mobileScrollSupport: false,
-
       minWidth: 320,
       maxWidth: 1600,
       minHeight: 450,
