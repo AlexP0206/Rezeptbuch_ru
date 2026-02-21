@@ -17,7 +17,7 @@
       color: #fff;
     }
 
-    /* Фон (PNG). Положи файл в assets/background.png */
+    /* Чёрный фон всегда */
     #app {
       width: 100vw;
       height: 100vh;
@@ -25,25 +25,19 @@
       padding: env(safe-area-inset-top) env(safe-area-inset-right)
                env(safe-area-inset-bottom) env(safe-area-inset-left);
       box-sizing: border-box;
-
-      background-image: url("assets/background.png");
-      background-size: cover;
-      background-position: center;
-      background-repeat: no-repeat;
-
+      background: #000;
       display: flex;
       align-items: center;
       justify-content: center;
       position: relative;
     }
 
-    /* затемнение, чтобы текст UI был читаемым (можешь убрать, если не нужно) */
-    #app::before{
-      content:"";
-      position:absolute;
-      inset:0;
-      background: rgba(0,0,0,0.20);
-      pointer-events:none;
+    /* Небольшие поля на телефоне, чтобы “не было слишком крупно” */
+    #app.innerPad {
+      padding: calc(env(safe-area-inset-top) + 10px)
+               calc(env(safe-area-inset-right) + 10px)
+               calc(env(safe-area-inset-bottom) + 10px)
+               calc(env(safe-area-inset-left) + 10px);
     }
 
     #viewer {
@@ -51,8 +45,7 @@
       height: 100%;
       display: grid;
       gap: 0;
-      position: relative;
-      z-index: 1;
+      background: #000;
     }
 
     #viewer.one  { grid-template-columns: 1fr; }
@@ -61,15 +54,14 @@
     .pane {
       position: relative;
       overflow: hidden;
-      background: rgba(0,0,0,0.35);
+      background: #000;      /* важно: остаётся чёрным */
       touch-action: none;
-      backdrop-filter: blur(0px);
     }
 
     .pane img {
       width: 100%;
       height: 100%;
-      object-fit: contain;
+      object-fit: contain;   /* ✅ целиком, без обрезки */
       transform-origin: center center;
       will-change: transform;
       user-select: none;
@@ -77,21 +69,20 @@
       pointer-events: none;
     }
 
-    /* HUD */
     #hud {
       position: fixed;
       left: 50%;
       bottom: 10px;
       transform: translateX(-50%);
       background: rgba(0,0,0,0.55);
+      color: #fff;
+      font-size: 14px;
       padding: 6px 10px;
       border-radius: 999px;
-      font-size: 14px;
       z-index: 5;
       pointer-events: none;
     }
 
-    /* Кнопка меню */
     #menuBtn {
       position: fixed;
       top: calc(10px + env(safe-area-inset-top));
@@ -108,7 +99,7 @@
       touch-action: manipulation;
     }
 
-    /* Оглавление (drawer) */
+    /* TOC */
     #tocOverlay {
       position: fixed;
       inset: 0;
@@ -116,6 +107,7 @@
       display: none;
       z-index: 20;
     }
+
     #tocDrawer {
       position: fixed;
       top: 0;
@@ -133,6 +125,7 @@
       padding: calc(12px + env(safe-area-inset-top)) 12px 12px calc(12px + env(safe-area-inset-left));
       box-sizing: border-box;
     }
+
     #tocDrawer.open { transform: translateX(0); }
 
     .tocHeader {
@@ -142,11 +135,13 @@
       gap: 12px;
       margin-bottom: 10px;
     }
+
     .tocHeader h2 {
       margin: 0;
       font-size: 18px;
       font-weight: 700;
     }
+
     .tocHeader button {
       border: 1px solid rgba(255,255,255,0.25);
       background: rgba(255,255,255,0.08);
@@ -154,6 +149,18 @@
       border-radius: 12px;
       padding: 8px 10px;
       font-size: 14px;
+    }
+
+    #tocSearch {
+      width: 100%;
+      box-sizing: border-box;
+      margin: 8px 0 10px;
+      padding: 10px 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.16);
+      background: rgba(0,0,0,0.35);
+      color: #fff;
+      outline: none;
     }
 
     #tocList {
@@ -170,31 +177,21 @@
       cursor: pointer;
       border: 1px solid transparent;
     }
+
     .tocItem:hover {
       background: rgba(255,255,255,0.06);
       border-color: rgba(255,255,255,0.10);
     }
+
     .tocPage {
       opacity: 0.75;
       font-size: 12px;
-      min-width: 42px;
+      min-width: 54px;
     }
+
     .tocTitle {
       font-size: 14px;
       line-height: 1.2;
-    }
-
-    /* Search */
-    #tocSearch {
-      width: 100%;
-      box-sizing: border-box;
-      margin: 8px 0 10px;
-      padding: 10px 10px;
-      border-radius: 12px;
-      border: 1px solid rgba(255,255,255,0.16);
-      background: rgba(0,0,0,0.35);
-      color: #fff;
-      outline: none;
     }
   </style>
 </head>
@@ -211,7 +208,6 @@
 
 <div id="hud"></div>
 
-<!-- TOC -->
 <div id="tocOverlay"></div>
 <aside id="tocDrawer" aria-label="Оглавление">
   <div class="tocHeader">
@@ -223,7 +219,7 @@
 </aside>
 
 <script>
-  // ====== 1) СТРАНИЦЫ ======
+  // ====== PAGES ======
   const pages = [
     "pages/page_1.jpg",
     "pages/page_2.jpg",
@@ -232,9 +228,7 @@
     "pages/page_5.jpg"
   ];
 
-  // ====== 2) ОГЛАВЛЕНИЕ ======
-  // page = номер страницы (с 1), title = текст
-  // Заполни как тебе нужно:
+  // ====== TOC ======
   const toc = [
     { page: 1, title: "Обложка" },
     { page: 2, title: "Оглавление" },
@@ -243,14 +237,14 @@
     { page: 5, title: "Рецепт: Плов" }
   ];
 
+  const app    = document.getElementById("app");
   const viewer = document.getElementById("viewer");
-  const paneL = document.getElementById("paneL");
-  const paneR = document.getElementById("paneR");
-  const imgL  = document.getElementById("imgL");
-  const imgR  = document.getElementById("imgR");
-  const hud   = document.getElementById("hud");
+  const paneL  = document.getElementById("paneL");
+  const paneR  = document.getElementById("paneR");
+  const imgL   = document.getElementById("imgL");
+  const imgR   = document.getElementById("imgR");
+  const hud    = document.getElementById("hud");
 
-  // ====== iPad landscape => 2 страницы, portrait => 1 ======
   function isIPad() {
     return navigator.maxTouchPoints > 1 && Math.max(screen.width, screen.height) >= 1024;
   }
@@ -260,9 +254,12 @@
   function shouldShowTwoPages() {
     return isIPad() && !isPortrait();
   }
+  function isPhoneLike() {
+    return window.matchMedia("(max-width: 700px)").matches;
+  }
 
-  // ====== Состояние ======
-  let index = 0; // индекс левой страницы
+  let index = 0;
+
   const zoomState = {
     L: { scale: 1, x: 0, y: 0 },
     R: { scale: 1, x: 0, y: 0 }
@@ -282,6 +279,11 @@
 
   function setMode() {
     const two = shouldShowTwoPages();
+
+    // небольшие поля на телефоне
+    if (isPhoneLike()) app.classList.add("innerPad");
+    else app.classList.remove("innerPad");
+
     if (two) {
       viewer.classList.remove("one");
       viewer.classList.add("two");
@@ -313,7 +315,7 @@
     resetZoom("R");
   }
 
-  // ====== Листание свайпом (когда не зум) ======
+  // свайп листает только если zoom=1
   let swipeStartX = 0, swipeStartY = 0;
   function isZoomed() {
     return zoomState.L.scale > 1.01 || zoomState.R.scale > 1.01;
@@ -336,7 +338,7 @@
     render();
   }, { passive: true });
 
-  // ====== Pinch-zoom + pan ======
+  // pinch-zoom + pan
   function attachPinchPan(pane, which) {
     let startDist = 0;
     let startScale = 1;
@@ -405,7 +407,7 @@
   attachPinchPan(paneL, "L");
   attachPinchPan(paneR, "R");
 
-  // ====== ОГЛАВЛЕНИЕ UI ======
+  // TOC UI
   const menuBtn = document.getElementById("menuBtn");
   const tocOverlay = document.getElementById("tocOverlay");
   const tocDrawer = document.getElementById("tocDrawer");
@@ -425,8 +427,7 @@
   }
 
   function gotoPage(pageNumber1Based) {
-    const targetIndex = clamp(pageNumber1Based - 1, 0, pages.length - 1);
-    index = targetIndex;
+    index = clamp(pageNumber1Based - 1, 0, pages.length - 1);
     closeToc();
     render();
   }
@@ -434,7 +435,6 @@
   function renderToc(filter) {
     const q = (filter || "").trim().toLowerCase();
     tocList.innerHTML = "";
-
     toc
       .filter(item => !q || item.title.toLowerCase().includes(q) || String(item.page).includes(q))
       .forEach(item => {
@@ -451,11 +451,9 @@
   tocOverlay.addEventListener("click", closeToc);
   tocSearch.addEventListener("input", () => renderToc(tocSearch.value));
 
-  // ====== Поворот экрана ======
   window.addEventListener("orientationchange", () => setTimeout(setMode, 150));
   window.addEventListener("resize", () => setTimeout(setMode, 150));
 
-  // Старт
   setMode();
 </script>
 
