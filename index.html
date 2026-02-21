@@ -3,18 +3,20 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Rezeptbuch Test</title>
+  <title>Rezeptbuch</title>
 
   <style>
     html, body {
       margin: 0;
       padding: 0;
+      height: 100%;
       background: #000;
       overflow: hidden;
-      height: 100%;
+      touch-action: none; /* мы сами управляем жестами в области книги */
     }
 
-    #book {
+    /* Контейнер книги на весь экран с safe-area */
+    #app {
       width: 100vw;
       height: 100vh;   /* fallback */
       height: 100dvh;  /* iOS 16+ */
@@ -22,71 +24,71 @@
                env(safe-area-inset-bottom) env(safe-area-inset-left);
       box-sizing: border-box;
       background: #000;
-    }
-
-    .page {
-      width: 100%;
-      height: 100%;
-      background: #000;
       display: flex;
       align-items: center;
       justify-content: center;
     }
 
-    /* По умолчанию показываем целиком */
-    .page img {
+    /* Область просмотра */
+    #viewer {
       width: 100%;
       height: 100%;
-      object-fit: contain;
-      user-select: none;
-      -webkit-user-drag: none;
-      touch-action: manipulation; /* чтобы iOS не “думал” про двойной зум страницы */
-    }
-
-    /* Режим “на весь экран” (будет обрезка) */
-    .page img.fit-cover {
-      object-fit: cover;
-    }
-
-    /* Сообщения об ошибке */
-    #msg {
-      position: fixed;
-      inset: 0;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-      color: #fff;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
-      text-align: center;
+      display: grid;
+      gap: 0;
       background: #000;
     }
-    #msg .box {
-      max-width: 520px;
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.18);
-      border-radius: 14px;
-      padding: 18px 16px;
+
+    /* 1 страница по умолчанию; для iPad landscape мы переключим на 2 колонки через JS */
+    #viewer.one  { grid-template-columns: 1fr; }
+    #viewer.two  { grid-template-columns: 1fr 1fr; }
+
+    .pane {
+      position: relative;
+      overflow: hidden;         /* чтобы зум не выходил за рамки панели */
+      background: #000;
+      touch-action: none;       /* важное для pinch */
     }
-    #msg code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+    .pane img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;      /* целиком без обрезки */
+      transform-origin: center center;
+      will-change: transform;
+      user-select: none;
+      -webkit-user-drag: none;
+      pointer-events: none;     /* чтобы жесты ловила панель */
+    }
+
+    /* Небольшой индикатор страницы */
+    #hud {
+      position: fixed;
+      left: 50%;
+      bottom: 10px;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.55);
+      color: #fff;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      font-size: 14px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
 
-<div id="book"></div>
-
-<div id="msg">
-  <div class="box" id="msgText"></div>
+<div id="app">
+  <div id="viewer" class="one">
+    <div class="pane" id="paneL"><img id="imgL" alt=""></div>
+    <div class="pane" id="paneR" style="display:none;"><img id="imgR" alt=""></div>
+  </div>
 </div>
 
-<script>
-  function showMsg(html) {
-    const msg = document.getElementById("msg");
-    const box = document.getElementById("msgText");
-    box.innerHTML = html;
-    msg.style.display = "flex";
-  }
+<div id="hud"></div>
 
+<script>
+  // ---- Настрой: список страниц
   const pages = [
     "pages/page_1.jpg",
     "pages/page_2.jpg",
@@ -95,99 +97,204 @@
     "pages/page_5.jpg"
   ];
 
-  const book = document.getElementById("book");
+  const viewer = document.getElementById("viewer");
+  const paneL = document.getElementById("paneL");
+  const paneR = document.getElementById("paneR");
+  const imgL  = document.getElementById("imgL");
+  const imgR  = document.getElementById("imgR");
+  const hud   = document.getElementById("hud");
 
-  // Создаём DOM страниц
-  pages.forEach(src => {
-    const page = document.createElement("div");
-    page.className = "page";
+  // ---- Определяем режим отображения
+  function isIPad() {
+    // iPadOS может маскироваться под Mac, поэтому проверяем touch + ширину
+    return navigator.maxTouchPoints > 1 && Math.max(screen.width, screen.height) >= 1024;
+  }
 
-    const img = document.createElement("img");
-    img.src = src;
-    img.alt = "";
+  function isPortrait() {
+    return window.matchMedia("(orientation: portrait)").matches;
+  }
 
-    page.appendChild(img);
-    book.appendChild(page);
-  });
+  function shouldShowTwoPages() {
+    // iPad landscape -> 2 страницы, iPad portrait -> 1 страница
+    // iPhone всегда 1 страница
+    return isIPad() && !isPortrait();
+  }
 
-  // --- Двойной тап: contain <-> cover
-  // Срабатывает по тапу по картинке, переключает класс fit-cover
-  let lastTap = 0;
-  book.addEventListener("touchend", (e) => {
-    const target = e.target;
-    if (!target || target.tagName !== "IMG") return;
+  // ---- Состояние книги
+  let index = 0; // индекс левой страницы (в one-page режиме это просто текущая)
+  const zoomState = {
+    L: { scale: 1, x: 0, y: 0 },
+    R: { scale: 1, x: 0, y: 0 }
+  };
 
-    const now = Date.now();
-    if (now - lastTap < 300) {
-      // double tap
-      target.classList.toggle("fit-cover");
-      lastTap = 0;
+  function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+
+  function applyTransform(which) {
+    const st = zoomState[which];
+    const img = which === "L" ? imgL : imgR;
+    img.style.transform = `translate(${st.x}px, ${st.y}px) scale(${st.scale})`;
+  }
+
+  function resetZoom(which) {
+    zoomState[which] = { scale: 1, x: 0, y: 0 };
+    applyTransform(which);
+  }
+
+  function setMode() {
+    const two = shouldShowTwoPages();
+
+    if (two) {
+      viewer.classList.remove("one");
+      viewer.classList.add("two");
+      paneR.style.display = "block";
     } else {
-      lastTap = now;
+      viewer.classList.remove("two");
+      viewer.classList.add("one");
+      paneR.style.display = "none";
     }
+    render();
+  }
+
+  function render() {
+    const two = shouldShowTwoPages();
+
+    if (two) {
+      // Следим, чтобы index был четным (чтобы развороты шли парами)
+      if (index % 2 !== 0) index -= 1;
+      index = clamp(index, 0, pages.length - 1);
+
+      imgL.src = pages[index] ?? "";
+      imgR.src = pages[index + 1] ?? "";
+      hud.textContent = `${index + 1}–${Math.min(index + 2, pages.length)} / ${pages.length}`;
+    } else {
+      index = clamp(index, 0, pages.length - 1);
+      imgL.src = pages[index] ?? "";
+      hud.textContent = `${index + 1} / ${pages.length}`;
+    }
+
+    // при смене страниц сбрасываем зум (чтобы не “таскать” старый масштаб)
+    resetZoom("L");
+    resetZoom("R");
+  }
+
+  // ---- Листание свайпом (работает, когда не зумим)
+  let swipeStartX = 0;
+  let swipeStartY = 0;
+
+  function isZoomed() {
+    return zoomState.L.scale > 1.01 || zoomState.R.scale > 1.01;
+  }
+
+  document.getElementById("app").addEventListener("touchstart", (e) => {
+    if (e.touches.length !== 1) return;
+    swipeStartX = e.touches[0].clientX;
+    swipeStartY = e.touches[0].clientY;
   }, { passive: true });
 
-  // --- загрузчик библиотеки с fallback (jsDelivr -> unpkg)
-  function loadScript(src) {
-    return new Promise((resolve, reject) => {
-      const s = document.createElement("script");
-      s.src = src;
-      s.onload = resolve;
-      s.onerror = () => reject(new Error("Failed to load: " + src));
-      document.head.appendChild(s);
-    });
-  }
+  document.getElementById("app").addEventListener("touchend", (e) => {
+    if (isZoomed()) return; // когда зум активен — не листаем
+    const dx = e.changedTouches[0].clientX - swipeStartX;
+    const dy = e.changedTouches[0].clientY - swipeStartY;
 
-  async function main() {
-    try {
-      await loadScript("https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.js");
-    } catch (e1) {
-      try {
-        await loadScript("https://unpkg.com/page-flip@2.0.7/dist/js/page-flip.browser.js");
-      } catch (e2) {
-        showMsg(
-          "❌ Не удалось загрузить библиотеку перелистывания на этом устройстве.<br><br>" +
-          "Проверь, открывается ли в Safari ссылка:<br>" +
-          "<code>cdn.jsdelivr.net</code> или <code>unpkg.com</code><br><br>" +
-          "Ошибка 1: <code>" + e1.message + "</code><br>" +
-          "Ошибка 2: <code>" + e2.message + "</code>"
-        );
-        return;
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return;
+
+    const two = shouldShowTwoPages();
+    if (dx < 0) {
+      // next
+      index += two ? 2 : 1;
+    } else {
+      // prev
+      index -= two ? 2 : 1;
+    }
+    render();
+  }, { passive: true });
+
+  // ---- Pinch-zoom + pan (на каждой панели отдельно)
+  function attachPinchPan(pane, which) {
+    let startDist = 0;
+    let startScale = 1;
+    let lastX = 0, lastY = 0;
+    let startX = 0, startY = 0;
+    let isPanning = false;
+
+    function dist(t1, t2) {
+      const dx = t2.clientX - t1.clientX;
+      const dy = t2.clientY - t1.clientY;
+      return Math.hypot(dx, dy);
+    }
+
+    pane.addEventListener("touchstart", (e) => {
+      if (which === "R" && paneR.style.display === "none") return;
+
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        startDist = dist(e.touches[0], e.touches[1]);
+        startScale = zoomState[which].scale;
+        isPanning = false;
+      } else if (e.touches.length === 1 && zoomState[which].scale > 1.01) {
+        e.preventDefault();
+        isPanning = true;
+        startX = e.touches[0].clientX - zoomState[which].x;
+        startY = e.touches[0].clientY - zoomState[which].y;
       }
-    }
+    }, { passive: false });
 
-    if (!window.St || !St.PageFlip) {
-      showMsg("❌ Библиотека загрузилась некорректно: <code>St.PageFlip</code> не найден.");
-      return;
-    }
+    pane.addEventListener("touchmove", (e) => {
+      if (which === "R" && paneR.style.display === "none") return;
 
-    // Режимы: iPhone = 1 страница, iPad/desktop = разворот
-    const isPhone = window.matchMedia("(max-width: 700px)").matches;
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const d = dist(e.touches[0], e.touches[1]);
+        const factor = d / startDist;
+        const nextScale = clamp(startScale * factor, 1, 4);
+        zoomState[which].scale = nextScale;
+        applyTransform(which);
+      } else if (e.touches.length === 1 && isPanning) {
+        e.preventDefault();
+        zoomState[which].x = e.touches[0].clientX - startX;
+        zoomState[which].y = e.touches[0].clientY - startY;
+        applyTransform(which);
+      }
+    }, { passive: false });
 
-    // Пропорция страницы ~ 21.5/26 = 0.827
-    const pageW = isPhone ? 1100 : 827;
-    const pageH = isPhone ? 1700 : 1000;
+    pane.addEventListener("touchend", () => {
+      // если вернулись к масштабу 1 — сбрасываем сдвиги
+      if (zoomState[which].scale <= 1.01) {
+        resetZoom(which);
+      }
+      isPanning = false;
+    }, { passive: true });
 
-    const flip = new St.PageFlip(book, {
-      width: pageW,
-      height: pageH,
-      size: "stretch",
-      showCover: false,
-      usePortrait: true,
-      maxShadowOpacity: 0.25,
-      mobileScrollSupport: false,
-      minWidth: 320,
-      maxWidth: 1600,
-      minHeight: 450,
-      maxHeight: 2200
-    });
-
-    flip.loadFromHTML(document.querySelectorAll(".page"));
+    // двойной тап: быстрый зум 1 <-> 2
+    let lastTap = 0;
+    pane.addEventListener("touchend", (e) => {
+      if (e.changedTouches.length !== 1) return;
+      const now = Date.now();
+      if (now - lastTap < 280) {
+        // toggle
+        if (zoomState[which].scale > 1.01) resetZoom(which);
+        else {
+          zoomState[which].scale = 2;
+          zoomState[which].x = 0;
+          zoomState[which].y = 0;
+          applyTransform(which);
+        }
+        lastTap = 0;
+      } else {
+        lastTap = now;
+      }
+    }, { passive: true });
   }
 
-  main().catch(err => {
-    showMsg("❌ Ошибка запуска: <code>" + (err?.message || err) + "</code>");
-  });
+  attachPinchPan(paneL, "L");
+  attachPinchPan(paneR, "R");
+
+  // ---- Реакция на поворот экрана / resize
+  window.addEventListener("orientationchange", () => setTimeout(setMode, 150));
+  window.addEventListener("resize", () => setTimeout(setMode, 150));
+
+  // старт
+  setMode();
 </script>
 
 </body>
