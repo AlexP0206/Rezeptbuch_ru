@@ -41,11 +41,7 @@
 
 <div id="book"></div>
 
-<!-- Flip library -->
 <script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.js"></script>
-
-<!-- Pinch zoom library -->
-<script src="https://unpkg.com/pinch-zoom-js@2.3.5/dist/pinch-zoom.min.js"></script>
 
 <script>
 const pages = [
@@ -59,7 +55,6 @@ const pages = [
 const book = document.getElementById("book");
 const isPhone = window.matchMedia("(max-width: 700px)").matches;
 
-// создаём страницы
 pages.forEach(src => {
   const page = document.createElement("div");
   page.className = "page";
@@ -67,38 +62,15 @@ pages.forEach(src => {
   const img = document.createElement("img");
   img.src = src;
 
-  if (isPhone) {
-    // 📱 Zoom режим
-    const wrapper = document.createElement("div");
-    wrapper.style.width = "100%";
-    wrapper.style.height = "100%";
-
-    wrapper.appendChild(img);
-    page.appendChild(wrapper);
-
-    setTimeout(() => {
-      new PinchZoom(wrapper, {
-        draggableUnzoomed: false,
-        minZoom: 1,
-        maxZoom: 4
-      });
-    }, 0);
-
-  } else {
-    page.appendChild(img);
-  }
-
+  page.appendChild(img);
   book.appendChild(page);
 });
-
-// --- iPhone: одна страница
-// --- iPad/Desktop: разворот
 
 const pageFlip = new St.PageFlip(book, {
   width: isPhone ? 1200 : 827,
   height: isPhone ? 1600 : 1000,
   size: "stretch",
-  showCover: false,
+  showCover: true,
   usePortrait: true,
   maxShadowOpacity: 0.25
 });
