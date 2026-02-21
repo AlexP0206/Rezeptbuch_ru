@@ -78,46 +78,40 @@ function isSinglePageMode() {
 
 function initOrReinit() {
   const book = document.getElementById("book");
-
-  // сохраняем текущую страницу
   const currentPage = pageFlip ? pageFlip.getCurrentPageIndex() : 0;
 
-  // уничтожаем старый экземпляр
   if (pageFlip) {
     try { pageFlip.destroy(); } catch (e) {}
     pageFlip = null;
   }
 
-  // iPhone/телефоны: узкий экран
   const isPhone = window.innerWidth < 700;
 
-  // ФОРС режима:
-  // - На телефоне задаём слишком большую "ширину страницы" (в логике библиотеки),
-  //   чтобы разворот (2 страницы) физически не помещался => будет 1 страница.
-  // - На iPad задаём нормальную ширину => будет разворот.
-  const pageW = isPhone ? 1400 : 550;
-  const pageH = isPhone ? 1900 : 750;
+  // базовая пропорция 21.5 / 26
+  const baseWidth = 620;
+  const baseHeight = 750;
+
+  const pageW = isPhone ? 1600 : baseWidth;
+  const pageH = isPhone ? 2000 : baseHeight;
 
   pageFlip = new St.PageFlip(book, {
     width: pageW,
     height: pageH,
     size: "stretch",
 
-    // важно для корректной работы stretch
     minWidth: 320,
-    maxWidth: 1200,
+    maxWidth: 1400,
     minHeight: 450,
     maxHeight: 900,
 
     showCover: false,
-    usePortrait: true, // разрешаем портретный режим
+    usePortrait: true,
     maxShadowOpacity: 0.3,
     mobileScrollSupport: false
   });
 
   pageFlip.loadFromHTML(document.querySelectorAll(".page"));
 
-  // возвращаемся на ту же страницу
   try { pageFlip.flip(currentPage); } catch (e) {}
 }
 
