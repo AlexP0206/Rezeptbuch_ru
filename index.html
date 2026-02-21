@@ -6,11 +6,40 @@
   <title>Rezeptbuch Test</title>
 
   <style>
-    html, body { margin:0; padding:0; height:100%; background:#000; overflow:hidden; }
-    /* iOS-friendly fullscreen */
-    #book { width:100vw; height:100dvh; }
-    .page { width:100%; height:100%; background:#000; }
-    .page img { width:100%; height:100%; object-fit:cover; user-select:none; -webkit-user-drag:none; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #000;
+      overflow: hidden;
+      height: 100%;
+    }
+
+    /* Реальный fullscreen на iOS: dvh + fallback + safe-area */
+    #book {
+      width: 100vw;
+      height: 100vh;              /* fallback */
+      height: 100dvh;             /* iOS 16+ корректно */
+      padding: env(safe-area-inset-top) env(safe-area-inset-right)
+               env(safe-area-inset-bottom) env(safe-area-inset-left);
+      box-sizing: border-box;
+      background: #000;
+    }
+
+    .page {
+      width: 100%;
+      height: 100%;
+      background: #000;
+    }
+
+    /* Если хочешь “на весь экран без полей” — cover.
+       Если хочешь видеть всю страницу целиком — поменяй на contain. */
+    .page img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      user-select: none;
+      -webkit-user-drag: none;
+    }
 
     /* Сообщения об ошибке */
     #msg {
@@ -44,7 +73,6 @@
 </div>
 
 <script>
-  // --- helper: показать ошибку на экране (важно для iPhone/iPad без консоли)
   function showMsg(html) {
     const msg = document.getElementById("msg");
     const box = document.getElementById("msgText");
@@ -52,7 +80,6 @@
     msg.style.display = "flex";
   }
 
-  // --- страницы (как у тебя)
   const pages = [
     "pages/page_1.jpg",
     "pages/page_2.jpg",
@@ -61,7 +88,6 @@
     "pages/page_5.jpg"
   ];
 
-  // --- создаём DOM страниц
   const book = document.getElementById("book");
   pages.forEach(src => {
     const page = document.createElement("div");
@@ -73,7 +99,6 @@
     book.appendChild(page);
   });
 
-  // --- загрузчик библиотеки с fallback (jsDelivr -> unpkg)
   function loadScript(src) {
     return new Promise((resolve, reject) => {
       const s = document.createElement("script");
@@ -85,11 +110,9 @@
   }
 
   async function main() {
-    // 1) пробуем jsDelivr
     try {
       await loadScript("https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.js");
     } catch (e1) {
-      // 2) fallback на unpkg
       try {
         await loadScript("https://unpkg.com/page-flip@2.0.7/dist/js/page-flip.browser.js");
       } catch (e2) {
@@ -109,29 +132,28 @@
       return;
     }
 
-    // --- режимы: iPhone = 1 страница, iPad/desktop = разворот
     const isPhone = window.matchMedia("(max-width: 700px)").matches;
 
-    // Пропорция страницы ~ 21.5/26 = 0.827
-    // На iPhone форсим single-page: делаем логическую ширину страницы слишком большой,
-    // чтобы две страницы не помещались рядом.
-    const pageW = isPhone ? 1200 : 827;
-    const pageH = isPhone ? 1450 : 1000;
+    // На телефоне форсим 1 страницу, но под экран:
+    // делаем "логическую" страницу высокой, чтобы растяжение заполняло экран.
+    const pageW = isPhone ? 1100 : 827;
+    const pageH = isPhone ? 1700 : 1000;
 
     const flip = new St.PageFlip(book, {
       width: pageW,
       height: pageH,
       size: "stretch",
-      showCover: true,
+
+      showCover: true,       // ✅ важно: иначе будет "обложка" и сдвиги/поля
       usePortrait: true,
+
       maxShadowOpacity: 0.25,
       mobileScrollSupport: false,
 
-      // стабилизация stretch:
       minWidth: 320,
-      maxWidth: 1400,
+      maxWidth: 1600,
       minHeight: 450,
-      maxHeight: 1600
+      maxHeight: 2200
     });
 
     flip.loadFromHTML(document.querySelectorAll(".page"));
