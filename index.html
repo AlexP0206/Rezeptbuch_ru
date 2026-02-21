@@ -12,467 +12,305 @@
       height: 100%;
       background: #000;
       overflow: hidden;
-      touch-action: none;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
       color: #fff;
+      touch-action: none;
     }
 
-    /* Чёрный фон всегда */
+    /* Полноэкранный контейнер */
     #app {
       width: 100vw;
-      height: 100vh;
-      height: 100dvh;
+      height: 100vh;    /* fallback */
+      height: 100dvh;   /* iOS 16+ */
+      background: #000;
       padding: env(safe-area-inset-top) env(safe-area-inset-right)
                env(safe-area-inset-bottom) env(safe-area-inset-left);
       box-sizing: border-box;
-      background: #000;
       display: flex;
       align-items: center;
       justify-content: center;
-      position: relative;
     }
 
-    /* Небольшие поля на телефоне, чтобы “не было слишком крупно” */
-    #app.innerPad {
-      padding: calc(env(safe-area-inset-top) + 10px)
-               calc(env(safe-area-inset-right) + 10px)
-               calc(env(safe-area-inset-bottom) + 10px)
-               calc(env(safe-area-inset-left) + 10px);
-    }
-
+    /* viewer занимает всё доступное место */
     #viewer {
       width: 100%;
       height: 100%;
       display: grid;
-      gap: 0;
       background: #000;
     }
 
-    #viewer.one  { grid-template-columns: 1fr; }
-    #viewer.two  { grid-template-columns: 1fr 1fr; }
+    /* 1 или 2 страницы */
+    #viewer.one { grid-template-columns: 1fr; }
+    #viewer.two { grid-template-columns: 1fr 1fr; }
 
+    /* Прячем правую страницу, когда режим one */
+    #viewer.one #paneR { display: none; }
+    #viewer.two #paneR { display: grid; }
+
+    /* Каждая панель — центрирует страницу */
     .pane {
-  position: relative;
-  background: #000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
+      width: 100%;
+      height: 100%;
+      background: #000;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      touch-action: none;
+    }
 
-/* Контейнер страницы с фиксированной пропорцией 21.5/26 */
-.pageWrapper {
-  width: 100%;
-  max-width: 100%;
-  max-height: 100%;
-  aspect-ratio: 21.5 / 26;   /* ✅ твоя реальная пропорция */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
+    /* Ключ: responsive-страница с пропорцией 21.5 / 26 */
+    .pageWrapper {
+      aspect-ratio: 21.5 / 26;
 
-.pageWrapper img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  user-select: none;
-  -webkit-user-drag: none;
-}
+      /* Вписываемся одновременно и по ширине, и по высоте */
+      width: min(100%, calc(100dvh * 0.826923)); /* 21.5/26 = 0.826923 */
+      max-width: 100%;
+      max-height: 100%;
 
+      display: block;
+    }
+
+    .pageWrapper img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: contain; /* ✅ всегда целиком */
+      background: #000;
+      transform-origin: center center;
+      will-change: transform;
+      user-select: none;
+      -webkit-user-drag: none;
+      pointer-events: none; /* жесты ловит pane */
+    }
+
+    /* Индикатор страниц */
     #hud {
       position: fixed;
       left: 50%;
       bottom: 10px;
       transform: translateX(-50%);
       background: rgba(0,0,0,0.55);
-      color: #fff;
-      font-size: 14px;
       padding: 6px 10px;
       border-radius: 999px;
-      z-index: 5;
-      pointer-events: none;
-    }
-
-    #menuBtn {
-      position: fixed;
-      top: calc(10px + env(safe-area-inset-top));
-      left: calc(10px + env(safe-area-inset-left));
-      z-index: 10;
-      border: 1px solid rgba(255,255,255,0.25);
-      background: rgba(0,0,0,0.55);
-      color: #fff;
-      border-radius: 12px;
-      padding: 10px 12px;
-      font-size: 16px;
-      line-height: 1;
-      cursor: pointer;
-      touch-action: manipulation;
-    }
-
-    /* TOC */
-    #tocOverlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.55);
-      display: none;
+      font-size: 14px;
       z-index: 20;
-    }
-
-    #tocDrawer {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: min(360px, 86vw);
-      height: 100vh;
-      height: 100dvh;
-      background: rgba(10,10,10,0.92);
-      border-right: 1px solid rgba(255,255,255,0.12);
-      transform: translateX(-110%);
-      transition: transform 160ms ease;
-      z-index: 21;
-      display: flex;
-      flex-direction: column;
-      padding: calc(12px + env(safe-area-inset-top)) 12px 12px calc(12px + env(safe-area-inset-left));
-      box-sizing: border-box;
-    }
-
-    #tocDrawer.open { transform: translateX(0); }
-
-    .tocHeader {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 10px;
-    }
-
-    .tocHeader h2 {
-      margin: 0;
-      font-size: 18px;
-      font-weight: 700;
-    }
-
-    .tocHeader button {
-      border: 1px solid rgba(255,255,255,0.25);
-      background: rgba(255,255,255,0.08);
-      color: #fff;
-      border-radius: 12px;
-      padding: 8px 10px;
-      font-size: 14px;
-    }
-
-    #tocSearch {
-      width: 100%;
-      box-sizing: border-box;
-      margin: 8px 0 10px;
-      padding: 10px 10px;
-      border-radius: 12px;
-      border: 1px solid rgba(255,255,255,0.16);
-      background: rgba(0,0,0,0.35);
-      color: #fff;
-      outline: none;
-    }
-
-    #tocList {
-      overflow: auto;
-      padding-right: 6px;
-    }
-
-    .tocItem {
-      display: flex;
-      gap: 10px;
-      align-items: baseline;
-      padding: 10px 8px;
-      border-radius: 12px;
-      cursor: pointer;
-      border: 1px solid transparent;
-    }
-
-    .tocItem:hover {
-      background: rgba(255,255,255,0.06);
-      border-color: rgba(255,255,255,0.10);
-    }
-
-    .tocPage {
-      opacity: 0.75;
-      font-size: 12px;
-      min-width: 54px;
-    }
-
-    .tocTitle {
-      font-size: 14px;
-      line-height: 1.2;
+      pointer-events: none;
     }
   </style>
 </head>
+
 <body>
+  <div id="app">
+    <div id="viewer" class="one">
+      <div class="pane" id="paneL">
+        <div class="pageWrapper">
+          <img id="imgL" alt="">
+        </div>
+      </div>
 
-<button id="menuBtn" aria-label="Оглавление">☰</button>
-
-<div id="app">
-  <div id="viewer" class="one">
-    <div class="pane" id="paneL">
-  <div class="pageWrapper">
-    <img id="imgL">
+      <div class="pane" id="paneR">
+        <div class="pageWrapper">
+          <img id="imgR" alt="">
+        </div>
+      </div>
+    </div>
   </div>
-</div>
-    <div class="pane" id="paneR">
-  <div class="pageWrapper">
-    <img id="imgR">
-  </div>
-</div>
-  </div>
-</div>
 
-<div id="hud"></div>
+  <div id="hud"></div>
 
-<div id="tocOverlay"></div>
-<aside id="tocDrawer" aria-label="Оглавление">
-  <div class="tocHeader">
-    <h2>Оглавление</h2>
-    <button id="tocClose">Закрыть</button>
-  </div>
-  <input id="tocSearch" placeholder="Поиск (например: борщ)" />
-  <div id="tocList"></div>
-</aside>
+  <script>
+    // ====== ТВОИ СТРАНИЦЫ ======
+    const pages = [
+      "pages/page_1.jpg",
+      "pages/page_2.jpg",
+      "pages/page_3.jpg",
+      "pages/page_4.jpg",
+      "pages/page_5.jpg"
+    ];
 
-<script>
-  // ====== PAGES ======
-  const pages = [
-    "pages/page_1.jpg",
-    "pages/page_2.jpg",
-    "pages/page_3.jpg",
-    "pages/page_4.jpg",
-    "pages/page_5.jpg"
-  ];
+    const viewer = document.getElementById("viewer");
+    const paneL  = document.getElementById("paneL");
+    const paneR  = document.getElementById("paneR");
+    const imgL   = document.getElementById("imgL");
+    const imgR   = document.getElementById("imgR");
+    const hud    = document.getElementById("hud");
 
-  // ====== TOC ======
-  const toc = [
-    { page: 1, title: "Обложка" },
-    { page: 2, title: "Оглавление" },
-    { page: 3, title: "Салаты" },
-    { page: 4, title: "Рецепт: Салат Оливье" },
-    { page: 5, title: "Rezept: Salat Olivier" }
-  ];
-
-  const app    = document.getElementById("app");
-  const viewer = document.getElementById("viewer");
-  const paneL  = document.getElementById("paneL");
-  const paneR  = document.getElementById("paneR");
-  const imgL   = document.getElementById("imgL");
-  const imgR   = document.getElementById("imgR");
-  const hud    = document.getElementById("hud");
-
-  function isIPad() {
-    return navigator.maxTouchPoints > 1 && Math.max(screen.width, screen.height) >= 1024;
-  }
-  function isPortrait() {
-    return window.matchMedia("(orientation: portrait)").matches;
-  }
-  function shouldShowTwoPages() {
-    return isIPad() && !isPortrait();
-  }
-  function isPhoneLike() {
-    return window.matchMedia("(max-width: 700px)").matches;
-  }
-
-  let index = 0;
-
-  const zoomState = {
-    L: { scale: 1, x: 0, y: 0 },
-    R: { scale: 1, x: 0, y: 0 }
-  };
-
-  function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
-
-  function applyTransform(which) {
-    const st = zoomState[which];
-    const img = which === "L" ? imgL : imgR;
-    img.style.transform = `translate(${st.x}px, ${st.y}px) scale(${st.scale})`;
-  }
-  function resetZoom(which) {
-    zoomState[which] = { scale: 1, x: 0, y: 0 };
-    applyTransform(which);
-  }
-
-  function setMode() {
-    const two = shouldShowTwoPages();
-
-    // небольшие поля на телефоне
-    if (isPhoneLike()) app.classList.add("innerPad");
-    else app.classList.remove("innerPad");
-
-    if (two) {
-      viewer.classList.remove("one");
-      viewer.classList.add("two");
-      paneR.style.display = "block";
-    } else {
-      viewer.classList.remove("two");
-      viewer.classList.add("one");
-      paneR.style.display = "none";
+    // iPad: landscape=2 страницы, portrait=1
+    function isIPad() {
+      return navigator.maxTouchPoints > 1 && Math.max(screen.width, screen.height) >= 1024;
     }
-    render();
-  }
-
-  function render() {
-    const two = shouldShowTwoPages();
-
-    if (two) {
-      if (index % 2 !== 0) index -= 1;
-      index = clamp(index, 0, pages.length - 1);
-      imgL.src = pages[index] ?? "";
-      imgR.src = pages[index + 1] ?? "";
-      hud.textContent = `${index + 1}–${Math.min(index + 2, pages.length)} / ${pages.length}`;
-    } else {
-      index = clamp(index, 0, pages.length - 1);
-      imgL.src = pages[index] ?? "";
-      hud.textContent = `${index + 1} / ${pages.length}`;
+    function isPortrait() {
+      return window.matchMedia("(orientation: portrait)").matches;
+    }
+    function shouldShowTwoPages() {
+      return isIPad() && !isPortrait();
     }
 
-    resetZoom("L");
-    resetZoom("R");
-  }
+    // Текущая страница (левая)
+    let index = 0;
 
-  // свайп листает только если zoom=1
-  let swipeStartX = 0, swipeStartY = 0;
-  function isZoomed() {
-    return zoomState.L.scale > 1.01 || zoomState.R.scale > 1.01;
-  }
+    // Zoom состояния для каждой панели
+    const zoomState = {
+      L: { scale: 1, x: 0, y: 0 },
+      R: { scale: 1, x: 0, y: 0 }
+    };
 
-  document.getElementById("app").addEventListener("touchstart", (e) => {
-    if (e.touches.length !== 1) return;
-    swipeStartX = e.touches[0].clientX;
-    swipeStartY = e.touches[0].clientY;
-  }, { passive: true });
+    function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
 
-  document.getElementById("app").addEventListener("touchend", (e) => {
-    if (isZoomed()) return;
-    const dx = e.changedTouches[0].clientX - swipeStartX;
-    const dy = e.changedTouches[0].clientY - swipeStartY;
-    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return;
-
-    const two = shouldShowTwoPages();
-    index += (dx < 0) ? (two ? 2 : 1) : (two ? -2 : -1);
-    render();
-  }, { passive: true });
-
-  // pinch-zoom + pan
-  function attachPinchPan(pane, which) {
-    let startDist = 0;
-    let startScale = 1;
-    let startX = 0, startY = 0;
-    let isPanning = false;
-
-    function dist(t1, t2) {
-      const dx = t2.clientX - t1.clientX;
-      const dy = t2.clientY - t1.clientY;
-      return Math.hypot(dx, dy);
+    function applyTransform(which) {
+      const st = zoomState[which];
+      const img = which === "L" ? imgL : imgR;
+      img.style.transform = `translate(${st.x}px, ${st.y}px) scale(${st.scale})`;
     }
 
-    pane.addEventListener("touchstart", (e) => {
-      if (which === "R" && paneR.style.display === "none") return;
+    function resetZoom(which) {
+      zoomState[which] = { scale: 1, x: 0, y: 0 };
+      applyTransform(which);
+    }
 
-      if (e.touches.length === 2) {
-        e.preventDefault();
-        startDist = dist(e.touches[0], e.touches[1]);
-        startScale = zoomState[which].scale;
-        isPanning = false;
-      } else if (e.touches.length === 1 && zoomState[which].scale > 1.01) {
-        e.preventDefault();
-        isPanning = true;
-        startX = e.touches[0].clientX - zoomState[which].x;
-        startY = e.touches[0].clientY - zoomState[which].y;
-      }
-    }, { passive: false });
+    function setModeAndRender() {
+      const two = shouldShowTwoPages();
 
-    pane.addEventListener("touchmove", (e) => {
-      if (which === "R" && paneR.style.display === "none") return;
-
-      if (e.touches.length === 2) {
-        e.preventDefault();
-        const d = dist(e.touches[0], e.touches[1]);
-        const factor = d / startDist;
-        zoomState[which].scale = clamp(startScale * factor, 1, 4);
-        applyTransform(which);
-      } else if (e.touches.length === 1 && isPanning) {
-        e.preventDefault();
-        zoomState[which].x = e.touches[0].clientX - startX;
-        zoomState[which].y = e.touches[0].clientY - startY;
-        applyTransform(which);
-      }
-    }, { passive: false });
-
-    pane.addEventListener("touchend", () => {
-      if (zoomState[which].scale <= 1.01) resetZoom(which);
-      isPanning = false;
-    }, { passive: true });
-
-    // двойной тап: 1 <-> 2
-    let lastTap = 0;
-    pane.addEventListener("touchend", (e) => {
-      if (e.changedTouches.length !== 1) return;
-      const now = Date.now();
-      if (now - lastTap < 280) {
-        if (zoomState[which].scale > 1.01) resetZoom(which);
-        else { zoomState[which].scale = 2; zoomState[which].x = 0; zoomState[which].y = 0; applyTransform(which); }
-        lastTap = 0;
+      if (two) {
+        viewer.classList.remove("one");
+        viewer.classList.add("two");
       } else {
-        lastTap = now;
+        viewer.classList.remove("two");
+        viewer.classList.add("one");
       }
+
+      render();
+    }
+
+    function render() {
+      const two = shouldShowTwoPages();
+
+      if (two) {
+        // делаем развороты парами
+        if (index % 2 !== 0) index -= 1;
+        index = clamp(index, 0, pages.length - 1);
+
+        imgL.src = pages[index] ?? "";
+        imgR.src = pages[index + 1] ?? "";
+
+        hud.textContent = `${index + 1}–${Math.min(index + 2, pages.length)} / ${pages.length}`;
+      } else {
+        index = clamp(index, 0, pages.length - 1);
+        imgL.src = pages[index] ?? "";
+        hud.textContent = `${index + 1} / ${pages.length}`;
+      }
+
+      // При смене страницы сбрасываем zoom
+      resetZoom("L");
+      resetZoom("R");
+    }
+
+    // ====== Свайп для листания (только если zoom=1) ======
+    let swipeStartX = 0, swipeStartY = 0;
+
+    function isZoomed() {
+      return zoomState.L.scale > 1.01 || zoomState.R.scale > 1.01;
+    }
+
+    document.getElementById("app").addEventListener("touchstart", (e) => {
+      if (e.touches.length !== 1) return;
+      swipeStartX = e.touches[0].clientX;
+      swipeStartY = e.touches[0].clientY;
     }, { passive: true });
-  }
 
-  attachPinchPan(paneL, "L");
-  attachPinchPan(paneR, "R");
+    document.getElementById("app").addEventListener("touchend", (e) => {
+      if (isZoomed()) return;
 
-  // TOC UI
-  const menuBtn = document.getElementById("menuBtn");
-  const tocOverlay = document.getElementById("tocOverlay");
-  const tocDrawer = document.getElementById("tocDrawer");
-  const tocList = document.getElementById("tocList");
-  const tocClose = document.getElementById("tocClose");
-  const tocSearch = document.getElementById("tocSearch");
+      const dx = e.changedTouches[0].clientX - swipeStartX;
+      const dy = e.changedTouches[0].clientY - swipeStartY;
 
-  function openToc() {
-    tocOverlay.style.display = "block";
-    tocDrawer.classList.add("open");
-    renderToc(tocSearch.value || "");
-    tocSearch.focus();
-  }
-  function closeToc() {
-    tocDrawer.classList.remove("open");
-    tocOverlay.style.display = "none";
-  }
+      // Листаем только если горизонтальный свайп заметный
+      if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return;
 
-  function gotoPage(pageNumber1Based) {
-    index = clamp(pageNumber1Based - 1, 0, pages.length - 1);
-    closeToc();
-    render();
-  }
+      const two = shouldShowTwoPages();
+      if (dx < 0) index += two ? 2 : 1;  // next
+      else index -= two ? 2 : 1;         // prev
 
-  function renderToc(filter) {
-    const q = (filter || "").trim().toLowerCase();
-    tocList.innerHTML = "";
-    toc
-      .filter(item => !q || item.title.toLowerCase().includes(q) || String(item.page).includes(q))
-      .forEach(item => {
-        const row = document.createElement("div");
-        row.className = "tocItem";
-        row.innerHTML = `<div class="tocPage">стр. ${item.page}</div><div class="tocTitle">${item.title}</div>`;
-        row.addEventListener("click", () => gotoPage(item.page));
-        tocList.appendChild(row);
-      });
-  }
+      render();
+    }, { passive: true });
 
-  menuBtn.addEventListener("click", openToc);
-  tocClose.addEventListener("click", closeToc);
-  tocOverlay.addEventListener("click", closeToc);
-  tocSearch.addEventListener("input", () => renderToc(tocSearch.value));
+    // ====== Pinch-zoom + перетаскивание увеличенного ======
+    function attachPinchPan(pane, which) {
+      let startDist = 0;
+      let startScale = 1;
+      let startX = 0, startY = 0;
+      let isPanning = false;
 
-  window.addEventListener("orientationchange", () => setTimeout(setMode, 150));
-  window.addEventListener("resize", () => setTimeout(setMode, 150));
+      function dist(t1, t2) {
+        const dx = t2.clientX - t1.clientX;
+        const dy = t2.clientY - t1.clientY;
+        return Math.hypot(dx, dy);
+      }
 
-  setMode();
-</script>
+      pane.addEventListener("touchstart", (e) => {
+        // если правая панель скрыта — не обрабатываем
+        if (which === "R" && viewer.classList.contains("one")) return;
 
+        if (e.touches.length === 2) {
+          e.preventDefault();
+          startDist = dist(e.touches[0], e.touches[1]);
+          startScale = zoomState[which].scale;
+          isPanning = false;
+        } else if (e.touches.length === 1 && zoomState[which].scale > 1.01) {
+          e.preventDefault();
+          isPanning = true;
+          startX = e.touches[0].clientX - zoomState[which].x;
+          startY = e.touches[0].clientY - zoomState[which].y;
+        }
+      }, { passive: false });
+
+      pane.addEventListener("touchmove", (e) => {
+        if (which === "R" && viewer.classList.contains("one")) return;
+
+        if (e.touches.length === 2) {
+          e.preventDefault();
+          const d = dist(e.touches[0], e.touches[1]);
+          const factor = d / startDist;
+          zoomState[which].scale = clamp(startScale * factor, 1, 4);
+          applyTransform(which);
+        } else if (e.touches.length === 1 && isPanning) {
+          e.preventDefault();
+          zoomState[which].x = e.touches[0].clientX - startX;
+          zoomState[which].y = e.touches[0].clientY - startY;
+          applyTransform(which);
+        }
+      }, { passive: false });
+
+      pane.addEventListener("touchend", () => {
+        // если вернулись к 1 — сбрасываем сдвиг
+        if (zoomState[which].scale <= 1.01) resetZoom(which);
+        isPanning = false;
+      }, { passive: true });
+
+      // двойной тап: быстрый зум 1 <-> 2
+      let lastTap = 0;
+      pane.addEventListener("touchend", (e) => {
+        if (e.changedTouches.length !== 1) return;
+        const now = Date.now();
+        if (now - lastTap < 280) {
+          if (zoomState[which].scale > 1.01) resetZoom(which);
+          else { zoomState[which].scale = 2; zoomState[which].x = 0; zoomState[which].y = 0; applyTransform(which); }
+          lastTap = 0;
+        } else {
+          lastTap = now;
+        }
+      }, { passive: true });
+    }
+
+    attachPinchPan(paneL, "L");
+    attachPinchPan(paneR, "R");
+
+    // Поворот/resize: iPad портрет/ландшафт переключает 1/2 страницы
+    window.addEventListener("orientationchange", () => setTimeout(setModeAndRender, 150));
+    window.addEventListener("resize", () => setTimeout(setModeAndRender, 150));
+
+    // Старт
+    setModeAndRender();
+  </script>
 </body>
 </html>
